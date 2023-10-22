@@ -1,10 +1,25 @@
 """
 Class Operator
 
-1) Define inputs, outputs, and a `transform` method for defining the process method. 
-2) A execute method to run the ETL (extract, transform, load).
-3) Interface connecting `extract` and `load` method with `Storage` class.
-4) Variable defining the interaction between `extract` and `transform` and `transform` and `load`. 
+Python DataFrame Process: 
+
+1) [X] Define inputs, outputs, and a `transform` method for defining the process method. 
+2) [X] A execute method to run the ETL (extract, transform, load).
+3) [X] Interface connecting `extract` and `load` method with `Storage` class.
+4) [X] Variable defining the interaction between `extract` and `transform` and `transform` and `load`. 
+
+SQL Process
+NOTE:
+How to process with SQL?
+If: input_storage and output_storage are the storage and all using the same RDB backend. 
+    -> Run SQL on the same RDB. Use Jinja to stitch input_id, output_id, and select sql together. 
+Else If: input_storage is RDB and output_storage is not the same storage. 
+    -> Run SQL on the input_storage RDB. Use Jinja to stitch input_id, and select sql. 
+    -> Extract the result of SQL as python object supported by output_storage and save them into output_storage. 
+Else:
+    -> Extract input tables as save them into DuckDB
+    -> Run SQL in DuckDB
+    -> Take output from DuckDB and save to output storage.
 """
 from typing import List
 import abc
