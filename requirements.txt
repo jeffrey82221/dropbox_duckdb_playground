@@ -1,3 +1,4 @@
 # pydrive
 pandas
 dropbox
+pyarrow
