@@ -27,7 +27,7 @@ class Operator:
         raise NotImplementedError
     
     @abc.abstractproperty
-    def output_id(self) -> List[str]:
+    def output_ids(self) -> List[str]:
         """
         Returns:
             List[str]: a list of output object ids
@@ -51,8 +51,18 @@ class Operator:
         Run ETL (extract, transform, and load)
         """
         input_objs = self._extract(**kwargs)
+        assert isinstance(input_objs, list), 'Input of transform should be a list of object'
+        assert all([isinstance(obj, self.get_input_type()) for obj in input_objs]), f'One of the input_obj is not {self.get_input_type()}'
         output_objs = self.transform(input_objs, **kwargs)
+        assert isinstance(output_objs, list), 'Output of transform should be a list of object'
+        assert all([isinstance(obj, self.get_output_type()) for obj in output_objs]), f'One of the output_obj is not {self.get_output_type()}'
         self._load(output_objs, **kwargs)
+
+    def get_input_type(self):
+        return self.transform.__annotations__['inputs'].__args__[0]
+
+    def get_output_type(self):
+        return self.transform.__annotations__['return'].__args__[0]
 
     def _extract(self, **kwargs) -> List[object]:
         """

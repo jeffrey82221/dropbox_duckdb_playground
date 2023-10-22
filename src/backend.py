@@ -13,6 +13,7 @@ class Backend:
     Example: DropBoxStorage
     """
     def __init__(self, directory: str='/'):
+        assert directory.endswith('/')
         self._directory = directory
 
     @abc.abstractmethod
@@ -115,3 +116,5 @@ class LocalBackend(Backend):
         with open(self._directory + remote_path, 'rb') as f:
             result = io.BytesIO(f.read())
         return result
+
+
