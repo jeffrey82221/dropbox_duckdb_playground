@@ -4,6 +4,6 @@ Experiment with new ETL architecture: using Google Drive as storage, Duckdb + Py
 
 # Future Plan: 
 
-1) Extend to different web sources
+1) Extend to various web sources
 
 2) Build layered ETL pipeline: Blonze + Silver + Gold Layer in a new project
