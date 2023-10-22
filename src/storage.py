@@ -2,6 +2,8 @@ import abc
 import pandas as pd
 import io
 from .backend import Backend
+from .filesystem import FileSystem
+from .rdb import RDB
 
 
 class Storage:
@@ -17,20 +19,20 @@ class Storage:
         self._backend = backend
 
     @abc.abstractmethod
-    def upload(self, obj: object, remote_path: str):
+    def upload(self, obj: object, obj_id: str):
         """Upload of obj as a file at remote path 
 
         Args:
             obj (object): object to be upload
-            remote_path (str): path to upload
+            obj_id (str): path to upload
         """
         raise NotImplementedError
 
     @abc.abstractmethod
-    def download(self, remote_path: str) -> object:
+    def download(self, obj_id: str) -> object:
         """Download obj from remote path
         Args:
-            remote_path (str): The path to be download from.
+            obj_id (str): The path to be download from.
         Returns:
             object: The downloaded file. 
         """
@@ -43,12 +45,23 @@ class PandasStorage(Storage):
     def __init__(self, backend):
         super().__init__(backend=backend)
 
-    def upload(self, pandas: pd.DataFrame, remote_path: str):
-        buff = io.BytesIO()
-        pandas.to_parquet(buff)
-        self._backend.upload_core(buff, remote_path)
+    def upload(self, pandas: pd.DataFrame, obj_id: str):
+        if isinstance(self._backend, FileSystem):
+            buff = io.BytesIO()
+            pandas.to_parquet(buff)
+            self._backend.upload_core(buff, obj_id)
+        elif isinstance(self._backend, RDB):
+            assert all([isinstance(col, str) for col in pandas.columns]), 'all columns should be string for RDB backend'
+            self._backend.register(obj_id, pandas)
+        else:
+            raise TypeError('backend should be RDB or FileSystem')
 
-    def download(self, remote_path: str) -> pd.DataFrame:
-        buff = self._backend.download_core(remote_path)
-        result = pd.read_parquet(buff, engine='pyarrow')
-        return result
+    def download(self, obj_id: str) -> pd.DataFrame:
+        if isinstance(self._backend, FileSystem):
+            buff = self._backend.download_core(obj_id)
+            result = pd.read_parquet(buff, engine='pyarrow')
+            return result
+        elif isinstance(self._backend, RDB):
+            return self._backend.execute(f"SELECT * FROM {obj_id}").df()
+        else:
+            raise TypeError('backend should be RDB or FileSystem')
