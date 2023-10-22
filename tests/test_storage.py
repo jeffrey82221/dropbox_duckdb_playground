@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 import io
-from src.storage import Storage
+from src.storage import Storage, PandasStorage
 
 def test_upload_download_core():
     storage = Storage()
@@ -14,9 +14,9 @@ def test_upload_download_core():
     pd.testing.assert_frame_equal(in_table, out_table)
 
 def test_upload_download_pandas():
-    storage = Storage()
+    storage = PandasStorage()
     in_table = pd.DataFrame([1,2,4,5])
-    storage.upload_pandas(in_table, 'my-file.parquet')
-    out_table = storage.download_pandas('my-file.parquet')
+    storage.upload(in_table, 'my-file.parquet')
+    out_table = storage.download('my-file.parquet')
     pd.testing.assert_frame_equal(in_table, out_table)
 

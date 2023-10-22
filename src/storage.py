@@ -8,22 +8,12 @@ import pandas as pd
 
 class Storage:
     """
-    Storage object with IO interface implemented
+    Storage object with IO interface left abstract
     """
     def __init__(self):
         token = os.getenv('DROPBOX_TOKEN')
         self._dbx = dropbox.Dropbox(token)
 
-    def upload_pandas(self, pandas: pd.DataFrame, remote_path: str):
-        buff = io.BytesIO()
-        pandas.to_parquet(buff)
-        self._upload_core(buff, remote_path)
-
-    def download_pandas(self, remote_path: str) -> pd.DataFrame:
-        buff = self._download_core(remote_path)
-        result = pd.read_parquet(buff, engine='pyarrow')
-        return result
-    
     def _upload_core(self, file_obj: io.BytesIO, remote_path: str):
         try:
             if not remote_path.startswith('/'):
@@ -70,3 +60,16 @@ class Storage:
         revisions = sorted(entries, key=lambda entry: entry.server_modified)
         # Return the newest revision (last entry, because revisions was sorted oldest:newest)
         return revisions[-1].rev
+class PandasStorage(Storage):
+    """
+    Storage object with IO interface implemented
+    """
+    def upload(self, pandas: pd.DataFrame, remote_path: str):
+        buff = io.BytesIO()
+        pandas.to_parquet(buff)
+        self._upload_core(buff, remote_path)
+
+    def download(self, remote_path: str) -> pd.DataFrame:
+        buff = self._download_core(remote_path)
+        result = pd.read_parquet(buff, engine='pyarrow')
+        return result
