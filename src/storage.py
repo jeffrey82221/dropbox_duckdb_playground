@@ -1,3 +1,4 @@
+import abc
 import os
 import sys
 import dropbox
@@ -5,8 +6,35 @@ from dropbox.files import WriteMode
 from dropbox.exceptions import ApiError
 import io
 import pandas as pd
+class Backend:
+    """
+    Backend for storing python objects. 
 
-class Storage:
+    Example: DropBoxStorage
+    """
+    @abc.abstractmethod
+    def _upload_core(self, file_obj: io.BytesIO, remote_path: str):
+        """Upload file object to a remote storage
+
+        Args:
+            file_obj (io.BytesIO): file to be upload 
+            remote_path (str): remote file path 
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _download_core(self, remote_path: str) -> io.BytesIO:
+        """Download file from remote storage
+
+        Args:
+            remote_path (str): remote file path
+
+        Returns:
+            io.BytesIO: downloaded file
+        """
+        raise NotImplementedError
+    
+class DropboxBackend(Backend):
     """
     Storage object with IO interface left abstract
     """
@@ -14,7 +42,7 @@ class Storage:
         token = os.getenv('DROPBOX_TOKEN')
         self._dbx = dropbox.Dropbox(token)
 
-    def _upload_core(self, file_obj: io.BytesIO, remote_path: str):
+    def upload_core(self, file_obj: io.BytesIO, remote_path: str):
         try:
             if not remote_path.startswith('/'):
                 remote_path = '/' + remote_path
@@ -33,7 +61,7 @@ class Storage:
                 print(err)
                 sys.exit()
 
-    def _download_core(self, remote_path: str) -> io.BytesIO:
+    def download_core(self, remote_path: str) -> io.BytesIO:
         try:
             if not remote_path.startswith('/'):
                 remote_path = '/' + remote_path
@@ -59,17 +87,52 @@ class Storage:
         entries = self._dbx.files_list_revisions(remote_path, limit=30).entries
         revisions = sorted(entries, key=lambda entry: entry.server_modified)
         # Return the newest revision (last entry, because revisions was sorted oldest:newest)
-        return revisions[-1].rev
+       
+class Storage:
+    """
+    A python object storage with various backend assigned. 
+    """
+    def __init__(self, backend: Backend):
+        """
+        Args:
+            backend (Backend): A remote storage backend 
+            to be use for the python object storage.
+        """
+        self._backend = backend
+
+    @abc.abstractmethod
+    def upload(self, obj: object, remote_path: str):
+        """Upload of obj as a file at remote path 
+
+        Args:
+            obj (object): object to be upload
+            remote_path (str): path to upload
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def download(self, remote_path: str) -> object:
+        """Download obj from remote path
+        Args:
+            remote_path (str): The path to be download from.
+        Returns:
+            object: The downloaded file. 
+        """
+        raise NotImplementedError
+
 class PandasStorage(Storage):
     """
     Storage object with IO interface implemented
     """
+    def __init__(self, backend):
+        super().__init__(backend=backend)
+
     def upload(self, pandas: pd.DataFrame, remote_path: str):
         buff = io.BytesIO()
         pandas.to_parquet(buff)
-        self._upload_core(buff, remote_path)
+        self._backend.upload_core(buff, remote_path)
 
     def download(self, remote_path: str) -> pd.DataFrame:
-        buff = self._download_core(remote_path)
+        buff = self._backend.download_core(remote_path)
         result = pd.read_parquet(buff, engine='pyarrow')
         return result
