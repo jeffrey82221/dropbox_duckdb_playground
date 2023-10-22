@@ -4,6 +4,8 @@ import dropbox
 from dropbox.files import WriteMode
 from dropbox.exceptions import ApiError
 import io
+import pandas as pd
+
 class Storage:
     """
     Storage object with IO interface implemented
@@ -12,13 +14,22 @@ class Storage:
         token = os.getenv('DROPBOX_TOKEN')
         self._dbx = dropbox.Dropbox(token)
 
-    def download_core(self, remote_path: str) -> io.BytesIO:
+    def upload_pandas(self, pandas: pd.DataFrame, remote_path: str):
+        buff = io.BytesIO()
+        pandas.to_parquet(buff)
+        self._upload_core(buff, remote_path)
+
+    def download_pandas(self, remote_path: str) -> pd.DataFrame:
+        buff = self._download_core(remote_path)
+        result = pd.read_parquet(buff, engine='pyarrow')
+        return result
+    
+    def _upload_core(self, file_obj: io.BytesIO, remote_path: str):
         try:
             if not remote_path.startswith('/'):
                 remote_path = '/' + remote_path
-            buff = io.BytesIO(self._dbx.files_download(remote_path)[-1].content)
-            buff.seek(0)
-            return buff
+            file_obj.seek(0)
+            self._dbx.files_upload(file_obj.read(), remote_path, mode=WriteMode('overwrite'))
         except ApiError as err:
             # This checks for the specific error where a user doesn't have
             # enough Dropbox space quota to upload this file
@@ -31,12 +42,14 @@ class Storage:
             else:
                 print(err)
                 sys.exit()
-    def upload_core(self, file_obj: io.BytesIO, remote_path: str):
+
+    def _download_core(self, remote_path: str) -> io.BytesIO:
         try:
             if not remote_path.startswith('/'):
                 remote_path = '/' + remote_path
-            file_obj.seek(0)
-            self._dbx.files_upload(file_obj.read(), remote_path, mode=WriteMode('overwrite'))
+            buff = io.BytesIO(self._dbx.files_download(remote_path)[-1].content)
+            buff.seek(0)
+            return buff
         except ApiError as err:
             # This checks for the specific error where a user doesn't have
             # enough Dropbox space quota to upload this file
