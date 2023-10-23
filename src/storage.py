@@ -1,8 +1,10 @@
 import abc
 import pandas as pd
+import vaex as vx
 import io
 from .backend import Backend
 from .filesystem import FileSystem
+from .filesystem import LocalBackend
 from .rdb import RDB
 
 
@@ -40,7 +42,7 @@ class Storage:
 
 class PandasStorage(Storage):
     """
-    Storage object with IO interface implemented
+    Storage of Pandas DataFrame
     """
     def __init__(self, backend):
         super().__init__(backend=backend)
@@ -63,5 +65,43 @@ class PandasStorage(Storage):
             return result
         elif isinstance(self._backend, RDB):
             return self._backend.execute(f"SELECT * FROM {obj_id}").df()
+        else:
+            raise TypeError('backend should be RDB or FileSystem')
+
+
+class VaexStorage(Storage):
+    """Storage of Polars DataFrame
+    """
+    def __init__(self, backend):
+        super().__init__(backend=backend)
+
+    def upload(self, vaex: vx.DataFrame, obj_id: str):
+        if isinstance(self._backend, FileSystem):
+            buff = io.BytesIO()
+            vaex.export_parquet(buff)
+            self._backend.upload_core(buff, obj_id)
+        elif isinstance(self._backend, RDB):
+            assert all([isinstance(col, str) for col in vaex.columns]), 'all columns should be string for RDB backend'
+            self._backend.register(obj_id, vaex.to_arrow_table())
+        else:
+            raise TypeError('backend should be RDB or FileSystem')
+
+    def download(self, obj_id: str) -> pd.DataFrame:
+        if isinstance(self._backend, FileSystem):
+            if isinstance(self._backend, LocalBackend):
+                result = vx.open(f'{self._backend._directory}{obj_id}')
+                return result
+            else:
+                import os
+                tmp_dir = './tmp/'
+                if not os.path.exists(tmp_dir):
+                    os.makedirs(tmp_dir)
+                ls = LocalBackend(tmp_dir)
+                buff = self._backend.download_core(obj_id)
+                ls.upload_core(buff, obj_id + '.parquet')
+                result = vx.open(f'{tmp_dir}{obj_id}.parquet')
+                return result
+        elif isinstance(self._backend, RDB):
+            return vx.from_arrow_table(self._backend.execute(f"SELECT * FROM {obj_id}").arrow())
         else:
             raise TypeError('backend should be RDB or FileSystem')

@@ -7,6 +7,7 @@ class RDB(Backend):
         self._schema = schema
         self._conn = conn
         super().__init__()
+        
 class DuckDBBackend(RDB):
     def __init__(self):
         super().__init__('', duckdb.connect())
