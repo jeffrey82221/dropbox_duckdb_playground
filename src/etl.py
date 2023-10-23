@@ -12,20 +12,19 @@ Else:
     -> Run SQL in DuckDB
     -> Take output from DuckDB and save to output storage.
 """
-from typing import List
+from typing import List, Dict
 import abc
 from .storage import Storage
+from .rdb import RDB
 
-
+__all__ = [
+    'DFProcessor',
+    'SQLExecutor'
+]
 class ETL:
     """
     Basic Interface for defining a unit of ETL flow.
     """
-
-    def __init__(self, input_storage: Storage, output_storage: Storage):
-        self._input_storage = input_storage
-        self._output_storage = output_storage
-
     @abc.abstractproperty
     def input_ids(self) -> List[str]:
         """
@@ -37,10 +36,58 @@ class ETL:
     @abc.abstractproperty
     def output_ids(self) -> List[str]:
         """
+        Args:
+            **kwargs: some additional variable passed from scheduling engine (e.g., Airflow)
+
         Returns:
             List[str]: a list of output object ids
         """
         raise NotImplementedError
+    
+    @abc.abstractmethod
+    def execute(self, **kwargs):
+        """Execute ETL 
+        """
+        raise NotImplementedError
+
+class SQLExecutor(ETL):
+    """Basic interface for SQL executor
+    """
+    def __init__(self, rdb: RDB):
+        self._rdb = rdb
+
+    @abc.abstractmethod
+    def sqls(self, **kwargs) -> Dict[str, str]:
+        """Select SQL for transforming the input tables.
+        
+        Args:
+            **kwargs: some additional variable passed from scheduling engine (e.g., Airflow)
+
+        Returns:
+            Dict[str, str]: The transformation SQLs. The key 
+            is the output_id to be insert into. The value is 
+            the corresponding SQL. 
+        """
+        raise NotImplementedError
+
+    def execute(self, **kwargs):
+        """
+        Args:
+            **kwargs: some additional variable passed from scheduling engine (e.g., Airflow)
+        """
+        assert all([id in self.sqls(**kwargs) for id in self.output_ids]), 'sqls key should corresponds to the output_ids'
+        for output_id, sql in self.sqls(**kwargs).items():
+            self._rdb.execute(f'''
+                  CREATE TABLE {output_id} AS ({sql});
+            ''')
+    
+class DFProcessor(ETL):
+    """
+    Basic Interface for defining a dataframe processing unit of ETL flow.
+    """
+    def __init__(self, input_storage: Storage, output_storage: Storage):
+        self._input_storage = input_storage
+        self._output_storage = output_storage
 
     @abc.abstractmethod
     def transform(self, inputs: List[object], **kwargs) -> List[object]:
@@ -52,6 +99,7 @@ class ETL:
         """
         raise NotImplementedError
 
+
     def execute(self, **kwargs):
         """
         Args:
@@ -62,12 +110,12 @@ class ETL:
         assert isinstance(
             input_objs, list), 'Input of transform should be a list of object'
         assert all([isinstance(obj, self.get_input_type()) for obj in input_objs]
-                   ), f'One of the input_obj is not {self.get_input_type()}'
+                ), f'One of the input_obj is not {self.get_input_type()}'
         output_objs = self.transform(input_objs, **kwargs)
         assert isinstance(
             output_objs, list), 'Output of transform should be a list of object'
         assert all([isinstance(obj, self.get_output_type()) for obj in output_objs]
-                   ), f'One of the output_obj is not {self.get_output_type()}'
+                ), f'One of the output_obj is not {self.get_output_type()}'
         self._load(output_objs, **kwargs)
 
     def get_input_type(self):

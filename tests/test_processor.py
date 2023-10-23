@@ -1,5 +1,5 @@
 import pytest
-from src.etl import ETL
+from src.etl import DFProcessor
 from typing import List
 import pandas as pd
 import vaex as vx
@@ -7,7 +7,7 @@ from src.filesystem import LocalBackend
 from src.storage import PandasStorage, VaexStorage
 
 
-class PDOperator(ETL):
+class PDOperator(DFProcessor):
     @property
     def input_ids(self):
         return [
@@ -25,7 +25,7 @@ class PDOperator(ETL):
         return [inputs[0] + inputs[1]]
 
 
-class VXOperator(ETL):
+class VXOperator(DFProcessor):
     @property
     def input_ids(self):
         return [
