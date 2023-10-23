@@ -17,7 +17,7 @@ import abc
 from .storage import Storage
 
 
-class Operator:
+class ETL:
     """
     Basic Interface for defining a unit of ETL flow.
     """
