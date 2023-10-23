@@ -76,7 +76,7 @@ class VaexStorage(Storage):
         super().__init__(backend=backend)
 
     def upload(self, vaex: vx.DataFrame, obj_id: str):
-        if isinstance(self._backend, FileSystem):
+        if isinstance(self._backend, LocalBackend):
             buff = io.BytesIO()
             vaex.export_parquet(buff)
             self._backend.upload_core(buff, obj_id)
@@ -84,24 +84,13 @@ class VaexStorage(Storage):
             assert all([isinstance(col, str) for col in vaex.columns]), 'all columns should be string for RDB backend'
             self._backend.register(obj_id, vaex.to_arrow_table())
         else:
-            raise TypeError('backend should be RDB or FileSystem')
+            raise TypeError('backend should be RDB or LocalBackend')
 
     def download(self, obj_id: str) -> pd.DataFrame:
-        if isinstance(self._backend, FileSystem):
-            if isinstance(self._backend, LocalBackend):
-                result = vx.open(f'{self._backend._directory}{obj_id}')
-                return result
-            else:
-                import os
-                tmp_dir = './tmp/'
-                if not os.path.exists(tmp_dir):
-                    os.makedirs(tmp_dir)
-                ls = LocalBackend(tmp_dir)
-                buff = self._backend.download_core(obj_id)
-                ls.upload_core(buff, obj_id + '.parquet')
-                result = vx.open(f'{tmp_dir}{obj_id}.parquet')
-                return result
+        if isinstance(self._backend, LocalBackend):
+            result = vx.open(f'{self._backend._directory}{obj_id}')
+            return result
         elif isinstance(self._backend, RDB):
             return vx.from_arrow_table(self._backend.execute(f"SELECT * FROM {obj_id}").arrow())
         else:
-            raise TypeError('backend should be RDB or FileSystem')
+            raise TypeError('backend should be RDB or LocalBackend')
