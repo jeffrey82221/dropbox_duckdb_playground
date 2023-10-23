@@ -1,6 +1,8 @@
 import abc
 import pandas as pd
 import vaex as vx
+import pyarrow as pa
+import pyarrow.parquet as pq
 import io
 from .backend import Backend
 from .filesystem import FileSystem
@@ -71,6 +73,32 @@ class PandasStorage(Storage):
             return self._backend.execute(f"SELECT * FROM {obj_id}").df()
         else:
             raise TypeError('backend should be RDB or FileSystem')
+
+class PyArrowStorage(Storage):
+    """Storage of pyarrow Table
+    """
+    def __init__(self, backend):
+        super().__init__(backend=backend)
+
+    def upload(self, pyarrow: pa.Table, obj_id: str):
+        if isinstance(self._backend, LocalBackend):
+            buff = io.BytesIO()
+            pq.write_table(pyarrow, buff)
+            self._backend.upload_core(buff, obj_id)
+        elif isinstance(self._backend, RDB):
+            self._backend.register(obj_id, pyarrow)
+        else:
+            raise TypeError('backend should be RDB or LocalBackend')
+
+    def download(self, obj_id: str) -> pa.Table:
+        if isinstance(self._backend, FileSystem):
+            buff = self._backend.download_core(obj_id)
+            return pq.read_table(buff)
+        elif isinstance(self._backend, RDB):
+            return self._backend.execute(
+                f"SELECT * FROM {obj_id}").arrow()
+        else:
+            raise TypeError('backend should be RDB or LocalBackend')
 
 
 class VaexStorage(Storage):
