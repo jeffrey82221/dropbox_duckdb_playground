@@ -1,6 +1,4 @@
 
 class Backend:
-    def __init__(self, directory: str='/'):
+    def __init__(self, directory: str = '/'):
         self._directory = directory
-        
-    

@@ -7,13 +7,15 @@ from dropbox.files import WriteMode
 from dropbox.exceptions import ApiError
 from .backend import Backend
 
+
 class FileSystem(Backend):
     """
-    FileSystem Backend for storing python objects. 
+    FileSystem Backend for storing python objects.
 
     Example: DropBoxStorage
     """
-    def __init__(self, directory: str='/'):
+
+    def __init__(self, directory: str = '/'):
         assert directory.endswith('/')
         super().__init__(directory)
 
@@ -22,8 +24,8 @@ class FileSystem(Backend):
         """Upload file object to a remote storage
 
         Args:
-            file_obj (io.BytesIO): file to be upload 
-            remote_path (str): remote file path 
+            file_obj (io.BytesIO): file to be upload
+            remote_path (str): remote file path
         """
         raise NotImplementedError
 
@@ -38,11 +40,13 @@ class FileSystem(Backend):
             io.BytesIO: downloaded file
         """
         raise NotImplementedError
-    
+
+
 class DropboxBackend(FileSystem):
     """
     Storage object with IO interface left abstract
     """
+
     def __init__(self, directory='/'):
         token = os.getenv('DROPBOX_TOKEN')
         self._dbx = dropbox.Dropbox(token)
@@ -51,7 +55,10 @@ class DropboxBackend(FileSystem):
     def upload_core(self, file_obj: io.BytesIO, remote_path: str):
         try:
             file_obj.seek(0)
-            self._dbx.files_upload(file_obj.read(), self._directory + remote_path, mode=WriteMode('overwrite'))
+            self._dbx.files_upload(
+                file_obj.read(),
+                self._directory + remote_path,
+                mode=WriteMode('overwrite'))
         except ApiError as err:
             # This checks for the specific error where a user doesn't have
             # enough Dropbox space quota to upload this file
@@ -67,7 +74,8 @@ class DropboxBackend(FileSystem):
 
     def download_core(self, remote_path: str) -> io.BytesIO:
         try:
-            buff = io.BytesIO(self._dbx.files_download(self._directory + remote_path)[-1].content)
+            buff = io.BytesIO(self._dbx.files_download(
+                self._directory + remote_path)[-1].content)
             buff.seek(0)
             return buff
         except ApiError as err:
@@ -84,22 +92,26 @@ class DropboxBackend(FileSystem):
                 sys.exit()
 
     def _select_revision(self, remote_path: str) -> str:
-        # Get the revisions for a file (and sort by the datetime object, "server_modified")
+        # Get the revisions for a file (and sort by the datetime object,
+        # "server_modified")
         print("Finding available revisions on Dropbox...")
-        entries = self._dbx.files_list_revisions(self._directory + remote_path, limit=30).entries
+        entries = self._dbx.files_list_revisions(
+            self._directory + remote_path, limit=30).entries
         revisions = sorted(entries, key=lambda entry: entry.server_modified)
-        # Return the newest revision (last entry, because revisions was sorted oldest:newest)
+        # Return the newest revision (last entry, because revisions was sorted
+        # oldest:newest)
+
 
 class LocalBackend(FileSystem):
     def __init__(self, directory='./'):
         self._directory = directory
-    
+
     def upload_core(self, file_obj: io.BytesIO, remote_path: str):
         """Upload file object to local storage
 
         Args:
-            file_obj (io.BytesIO): file to be upload 
-            remote_path (str): remote file path 
+            file_obj (io.BytesIO): file to be upload
+            remote_path (str): remote file path
         """
         file_obj.seek(0)
         with open(self._directory + remote_path, 'wb') as f:
@@ -117,5 +129,3 @@ class LocalBackend(FileSystem):
         with open(self._directory + remote_path, 'rb') as f:
             result = io.BytesIO(f.read())
         return result
-
-

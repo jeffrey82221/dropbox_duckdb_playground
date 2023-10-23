@@ -10,19 +10,20 @@ from .rdb import RDB
 
 class Storage:
     """
-    A python object storage with various backend assigned. 
+    A python object storage with various backend assigned.
     """
+
     def __init__(self, backend: Backend):
         """
         Args:
-            backend (Backend): A remote storage backend 
+            backend (Backend): A remote storage backend
             to be use for the python object storage.
         """
         self._backend = backend
 
     @abc.abstractmethod
     def upload(self, obj: object, obj_id: str):
-        """Upload of obj as a file at remote path 
+        """Upload of obj as a file at remote path
 
         Args:
             obj (object): object to be upload
@@ -36,14 +37,16 @@ class Storage:
         Args:
             obj_id (str): The path to be download from.
         Returns:
-            object: The downloaded file. 
+            object: The downloaded file.
         """
         raise NotImplementedError
+
 
 class PandasStorage(Storage):
     """
     Storage of Pandas DataFrame
     """
+
     def __init__(self, backend):
         super().__init__(backend=backend)
 
@@ -53,7 +56,8 @@ class PandasStorage(Storage):
             pandas.to_parquet(buff)
             self._backend.upload_core(buff, obj_id)
         elif isinstance(self._backend, RDB):
-            assert all([isinstance(col, str) for col in pandas.columns]), 'all columns should be string for RDB backend'
+            assert all([isinstance(col, str) for col in pandas.columns]
+                       ), 'all columns should be string for RDB backend'
             self._backend.register(obj_id, pandas)
         else:
             raise TypeError('backend should be RDB or FileSystem')
@@ -72,6 +76,7 @@ class PandasStorage(Storage):
 class VaexStorage(Storage):
     """Storage of Polars DataFrame
     """
+
     def __init__(self, backend):
         super().__init__(backend=backend)
 
@@ -81,7 +86,8 @@ class VaexStorage(Storage):
             vaex.export_parquet(buff)
             self._backend.upload_core(buff, obj_id)
         elif isinstance(self._backend, RDB):
-            assert all([isinstance(col, str) for col in vaex.columns]), 'all columns should be string for RDB backend'
+            assert all([isinstance(col, str) for col in vaex.columns]
+                       ), 'all columns should be string for RDB backend'
             self._backend.register(obj_id, vaex.to_arrow_table())
         else:
             raise TypeError('backend should be RDB or LocalBackend')
@@ -91,6 +97,7 @@ class VaexStorage(Storage):
             result = vx.open(f'{self._backend._directory}{obj_id}')
             return result
         elif isinstance(self._backend, RDB):
-            return vx.from_arrow_table(self._backend.execute(f"SELECT * FROM {obj_id}").arrow())
+            return vx.from_arrow_table(self._backend.execute(
+                f"SELECT * FROM {obj_id}").arrow())
         else:
             raise TypeError('backend should be RDB or LocalBackend')
