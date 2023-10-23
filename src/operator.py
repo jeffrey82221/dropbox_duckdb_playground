@@ -1,13 +1,4 @@
 """
-Class Operator
-
-Python DataFrame Process:
-
-1) [X] Define inputs, outputs, and a `transform` method for defining the process method.
-2) [X] A execute method to run the ETL (extract, transform, load).
-3) [X] Interface connecting `extract` and `load` method with `Storage` class.
-4) [X] Variable defining the interaction between `extract` and `transform` and `transform` and `load`.
-
 SQL Process
 NOTE:
 How to process with SQL?
