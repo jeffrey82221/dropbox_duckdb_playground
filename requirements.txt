@@ -1,3 +1,5 @@
 # pydrive
 pandas
 dropbox
+pyarrow
+duckdb

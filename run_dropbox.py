@@ -7,7 +7,8 @@ from dropbox.exceptions import ApiError, AuthError
 
 # Add OAuth2 access token here.
 # You can generate one for yourself in the App Console.
-# See <https://blogs.dropbox.com/developers/2014/05/generate-an-access-token-for-your-own-account/>
+# See
+# <https://blogs.dropbox.com/developers/2014/05/generate-an-access-token-for-your-own-account/>
 
 import os
 TOKEN = os.getenv('DROPBOX_TOKEN')
@@ -15,11 +16,18 @@ LOCALFILE = 'my-file.txt'
 BACKUPPATH = '/my-file-backup.txt'
 
 # Uploads contents of LOCALFILE to Dropbox
+
+
 def backup():
     with open(LOCALFILE, 'rb') as f:
         # We use WriteMode=overwrite to make sure that the settings in the file
         # are changed on upload
-        print("Uploading " + LOCALFILE + " to Dropbox as " + BACKUPPATH + "...")
+        print(
+            "Uploading " +
+            LOCALFILE +
+            " to Dropbox as " +
+            BACKUPPATH +
+            "...")
         try:
             dbx.files_upload(f.read(), BACKUPPATH, mode=WriteMode('overwrite'))
         except ApiError as err:
@@ -37,24 +45,36 @@ def backup():
 
 # Change the text string in LOCALFILE to be new_content
 # @param new_content is a string
+
+
 def change_local_file(new_content):
     print("Changing contents of " + LOCALFILE + " on local machine...")
     with open(LOCALFILE, 'wb') as f:
         f.write(new_content)
 
 # Restore the local and Dropbox files to a certain revision
+
+
 def restore(rev=None):
     # Restore the file on Dropbox to a certain revision
     print("Restoring " + BACKUPPATH + " to revision " + rev + " on Dropbox...")
     dbx.files_restore(BACKUPPATH, rev)
 
     # Download the specific revision of the file at BACKUPPATH to LOCALFILE
-    print("Downloading current " + BACKUPPATH + " from Dropbox, overwriting " + LOCALFILE + "...")
+    print(
+        "Downloading current " +
+        BACKUPPATH +
+        " from Dropbox, overwriting " +
+        LOCALFILE +
+        "...")
     dbx.files_download_to_file(LOCALFILE, BACKUPPATH, rev)
 
 # Look at all of the available revisions on Dropbox, and return the oldest one
+
+
 def select_revision():
-    # Get the revisions for a file (and sort by the datetime object, "server_modified")
+    # Get the revisions for a file (and sort by the datetime object,
+    # "server_modified")
     print("Finding available revisions on Dropbox...")
     entries = dbx.files_list_revisions(BACKUPPATH, limit=30).entries
     revisions = sorted(entries, key=lambda entry: entry.server_modified)
@@ -62,17 +82,20 @@ def select_revision():
     for revision in revisions:
         print(revision.rev, revision.server_modified)
 
-    # Return the oldest revision (first entry, because revisions was sorted oldest:newest)
+    # Return the oldest revision (first entry, because revisions was sorted
+    # oldest:newest)
     return revisions[0].rev
+
 
 if __name__ == '__main__':
     # Check for an access token
     if (len(TOKEN) == 0):
         sys.exit("ERROR: Looks like you didn't add your access token. "
-            "Open up backup-and-restore-example.py in a text editor and "
-            "paste in your token in line 14.")
+                 "Open up backup-and-restore-example.py in a text editor and "
+                 "paste in your token in line 14.")
 
-    # Create an instance of a Dropbox class, which can make requests to the API.
+    # Create an instance of a Dropbox class, which can make requests to the
+    # API.
     print("Creating a Dropbox object...")
     with dropbox.Dropbox(TOKEN) as dbx:
 
@@ -81,7 +104,7 @@ if __name__ == '__main__':
             dbx.users_get_current_account()
         except AuthError:
             sys.exit("ERROR: Invalid access token; try re-generating an "
-                "access token from the app console on the web.")
+                     "access token from the app console on the web.")
 
         # Create a backup of the current settings file
         backup()
