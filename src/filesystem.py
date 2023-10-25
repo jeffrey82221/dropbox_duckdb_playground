@@ -9,7 +9,6 @@ import io
 import dropbox
 from dropbox.files import WriteMode
 from dropbox.exceptions import ApiError, AuthError
-from dropbox.files import DownloadError
 from .backend import Backend
 
 
