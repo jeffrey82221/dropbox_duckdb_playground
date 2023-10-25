@@ -1,6 +1,6 @@
 """
 TODO:
-- [ ] Add check exists on DropBox Backend
+- [X] Add check exists on DropBox Backend
 """
 import abc
 import os
@@ -8,7 +8,8 @@ import sys
 import io
 import dropbox
 from dropbox.files import WriteMode
-from dropbox.exceptions import ApiError
+from dropbox.exceptions import ApiError, AuthError
+from dropbox.files import DownloadError
 from .backend import Backend
 
 
@@ -86,7 +87,9 @@ class DropboxBackend(FileSystem):
             else:
                 print(err)
                 sys.exit()
-
+        except AuthError as err:
+            raise err
+        
     def download_core(self, remote_path: str) -> io.BytesIO:
         try:
             buff = io.BytesIO(self._dbx.files_download(
@@ -94,18 +97,23 @@ class DropboxBackend(FileSystem):
             buff.seek(0)
             return buff
         except ApiError as err:
-            # This checks for the specific error where a user doesn't have
-            # enough Dropbox space quota to upload this file
-            if (err.error.is_path() and
-                    err.error.get_path().reason.is_insufficient_space()):
-                sys.exit("ERROR: Unknown APIError.")
-            elif err.user_message_text:
-                print(err.user_message_text)
-                sys.exit()
-            else:
-                print(err)
-                sys.exit()
+            raise err
+        except AuthError as err:
+            raise err
 
+    def check_exists(self, remote_path: str) -> bool:
+        """Check whether a remote file exists or not.
+        Args:
+            remote_path (str): remote file path
+
+        Returns:
+            bool: exists or not
+        """
+        try:
+            self._dbx.files_get_metadata(self._directory + remote_path)
+            return True
+        except ApiError:
+            return False
 class LocalBackend(FileSystem):
     def __init__(self, directory='./'):
         self._directory = directory

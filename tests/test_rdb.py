@@ -1,10 +1,10 @@
 """
 TODO:
-- [ ] Add testing on dropbox-based persistent usage. 
+- [X] Add testing on dropbox-based persistent usage. 
 """
 import pytest
 from src.rdb import DuckDBBackend
-from src.filesystem import LocalBackend
+from src.filesystem import LocalBackend, DropboxBackend
 import pyarrow as pa
 from duckdb.duckdb import ConnectionException, CatalogException
 import os
@@ -49,3 +49,34 @@ def test_local_persistent():
         duckdb2.execute('select * from test1').arrow()
     duckdb2.execute('select * from test2').arrow()
     os.remove('./data/test.duckdb')
+
+def test_dropbox_persistent_no_commit():
+    db_name = 'data/no_commit.duckdb'
+    duckdb = DuckDBBackend(persist_fs=DropboxBackend(), db_name=db_name)
+    in_table = pa.Table.from_pydict(
+        {'i': [1, 2, 3, 4],
+         'j': ["one", "two", "three", "four"]})
+    duckdb.register('test', in_table)
+    duckdb.execute('CREATE TABLE test2 AS (SELECT * FROM test);')
+    duckdb.close()
+    os.remove(f'./{db_name}')
+    duckdb2 = DuckDBBackend(persist_fs=DropboxBackend(), db_name=db_name)
+    with pytest.raises(CatalogException):
+        duckdb2.execute('select * from test2').arrow()
+    os.remove(f'./{db_name}')
+
+def test_dropbox_persistent_commit():
+    db_name = 'data/no_commit.duckdb'
+    duckdb = DuckDBBackend(persist_fs=DropboxBackend(), db_name=db_name)
+    in_table = pa.Table.from_pydict(
+        {'i': [1, 2, 3, 4],
+         'j': ["one", "two", "three", "four"]})
+    duckdb.register('test', in_table)
+    duckdb.execute('CREATE TABLE test2 AS (SELECT * FROM test);')
+    duckdb.commit() # Adding Commit Here to Sync with Dropbox
+    duckdb.close()
+    os.remove(f'./{db_name}')
+    duckdb2 = DuckDBBackend(persist_fs=DropboxBackend(), db_name=db_name)
+    with pytest.raises(CatalogException):
+        duckdb2.execute('select * from test2').arrow()
+    os.remove(f'./{db_name}')
