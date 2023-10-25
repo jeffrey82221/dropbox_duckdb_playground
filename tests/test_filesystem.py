@@ -11,7 +11,7 @@ def dropbox():
 
 @pytest.fixture
 def local():
-    return LocalBackend()
+    return LocalBackend('./data/')
 
 
 def test_upload_download_core(dropbox, local):

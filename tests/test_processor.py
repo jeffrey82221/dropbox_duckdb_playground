@@ -29,14 +29,14 @@ class VXOperator(DFProcessor):
     @property
     def input_ids(self):
         return [
-            'input1',
-            'input2'
+            'input3',
+            'input4'
         ]
 
     @property
     def output_ids(self):
         return [
-            'output'
+            'output1'
         ]
 
     def transform(self, inputs: List[vx.DataFrame]) -> List[vx.DataFrame]:
@@ -45,7 +45,7 @@ class VXOperator(DFProcessor):
 
 @pytest.fixture
 def pd_op():
-    storage = PandasStorage(LocalBackend())
+    storage = PandasStorage(LocalBackend('./data/'))
     storage.upload(pd.DataFrame([1, 2, 3]), 'input1')
     storage.upload(pd.DataFrame([1, 1, 1]), 'input2')
     op = PDOperator(
@@ -57,17 +57,17 @@ def pd_op():
 
 @pytest.fixture
 def vx_op():
-    storage = VaexStorage(LocalBackend('./tmp/'))
+    storage = VaexStorage(LocalBackend('./data/'))
     in_table = pd.DataFrame(
         [[1, 2, 3]], columns=['a', 'b', 'c']
     )
     in_table = vx.from_pandas(in_table)
-    storage.upload(in_table, 'input1')
+    storage.upload(in_table, 'input3')
     in_table = pd.DataFrame(
         [[1, 1, 1]], columns=['a', 'b', 'c']
     )
     in_table = vx.from_pandas(in_table)
-    storage.upload(in_table, 'input2')
+    storage.upload(in_table, 'input4')
     op = VXOperator(
         input_storage=storage,
         output_storage=storage
@@ -90,7 +90,7 @@ def test_execute(pd_op, vx_op):
     output = pd_op._output_storage.download('output')
     pd.testing.assert_frame_equal(output, pd.DataFrame([2, 3, 4]))
     vx_op.execute()
-    output = vx_op._output_storage.download('output')
+    output = vx_op._output_storage.download('output2')
     pd.testing.assert_frame_equal(
         output.to_pandas_df(),
         pd.DataFrame([[1, 2, 3], [1, 1, 1]], columns=['a', 'b', 'c'])
