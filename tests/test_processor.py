@@ -18,7 +18,7 @@ class PDOperator(DFProcessor):
     @property
     def output_ids(self):
         return [
-            'output'
+            'output1'
         ]
 
     def transform(self, inputs: List[pd.DataFrame]) -> List[pd.DataFrame]:
@@ -36,7 +36,7 @@ class VXOperator(DFProcessor):
     @property
     def output_ids(self):
         return [
-            'output1'
+            'output2'
         ]
 
     def transform(self, inputs: List[vx.DataFrame]) -> List[vx.DataFrame]:
@@ -87,7 +87,7 @@ def test_get_output_type(pd_op, vx_op):
 
 def test_execute(pd_op, vx_op):
     pd_op.execute()
-    output = pd_op._output_storage.download('output')
+    output = pd_op._output_storage.download('output1')
     pd.testing.assert_frame_equal(output, pd.DataFrame([2, 3, 4]))
     vx_op.execute()
     output = vx_op._output_storage.download('output2')
