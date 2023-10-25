@@ -1,3 +1,7 @@
+"""
+TODO:
+- [ ] Add check exists on DropBox Backend
+"""
 import abc
 import os
 import sys
@@ -38,6 +42,17 @@ class FileSystem(Backend):
 
         Returns:
             io.BytesIO: downloaded file
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def check_exists(self, remote_path: str) -> bool:
+        """Check whether a remote file exists or not.
+        Args:
+            remote_path (str): remote file path
+
+        Returns:
+            bool: exists or not
         """
         raise NotImplementedError
 
@@ -83,24 +98,13 @@ class DropboxBackend(FileSystem):
             # enough Dropbox space quota to upload this file
             if (err.error.is_path() and
                     err.error.get_path().reason.is_insufficient_space()):
-                sys.exit("ERROR: Cannot back up; insufficient space.")
+                sys.exit("ERROR: Unknown APIError.")
             elif err.user_message_text:
                 print(err.user_message_text)
                 sys.exit()
             else:
                 print(err)
                 sys.exit()
-
-    def _select_revision(self, remote_path: str) -> str:
-        # Get the revisions for a file (and sort by the datetime object,
-        # "server_modified")
-        print("Finding available revisions on Dropbox...")
-        entries = self._dbx.files_list_revisions(
-            self._directory + remote_path, limit=30).entries
-        revisions = sorted(entries, key=lambda entry: entry.server_modified)
-        # Return the newest revision (last entry, because revisions was sorted
-        # oldest:newest)
-
 
 class LocalBackend(FileSystem):
     def __init__(self, directory='./'):
@@ -129,3 +133,6 @@ class LocalBackend(FileSystem):
         with open(self._directory + remote_path, 'rb') as f:
             result = io.BytesIO(f.read())
         return result
+
+    def check_exists(self, remote_path: str) -> bool:
+        return os.path.exists(self._directory + remote_path)
