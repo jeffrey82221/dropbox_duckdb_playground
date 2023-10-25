@@ -4,25 +4,30 @@ from src.etl import SQLExecutor
 from src.rdb import DuckDBBackend
 from src.storage import PyArrowStorage
 import pandas as pd
+import os
 
 
 class MyExecutor(SQLExecutor):
     @property
     def input_ids(self):
         return [
-            'input1',
-            'input2'
+            'input5',
+            'input6'
         ]
 
     @property
     def output_ids(self):
         return [
-            'output'
+            'output3'
         ]
 
     def sqls(self, **kwargs) -> Dict[str, str]:
         return {
-            'output': 'SELECT * FROM input1'
+            'output3': '''
+                SELECT * FROM input5
+                UNION
+                SELECT * FROM input6
+            '''
         }
 
 
@@ -32,8 +37,8 @@ def op():
     in_table = pd.DataFrame(
         [[1, 2, 3]], columns=['a', 'b', 'c']
     )
-    db.register('input1', in_table)
-    db.register('input2', in_table)
+    db.register('input5', in_table)
+    db.register('input6', in_table)
     op = MyExecutor(
         rdb=db
     )
@@ -44,5 +49,5 @@ def test_execute(op):
         [[1, 2, 3]], columns=['a', 'b', 'c']
     )
     op.execute()
-    result = PyArrowStorage(op._rdb).download('output').to_pandas()
+    result = PyArrowStorage(op._rdb).download('output3').to_pandas()
     pd.testing.assert_frame_equal(result, in_table)

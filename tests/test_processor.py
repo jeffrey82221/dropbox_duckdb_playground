@@ -3,6 +3,7 @@ from src.etl import DFProcessor
 from typing import List
 import pandas as pd
 import vaex as vx
+import os
 from src.filesystem import LocalBackend
 from src.storage import PandasStorage, VaexStorage
 
@@ -95,3 +96,9 @@ def test_execute(pd_op, vx_op):
         output.to_pandas_df(),
         pd.DataFrame([[1, 2, 3], [1, 1, 1]], columns=['a', 'b', 'c'])
     )
+    os.remove('./data/input1')
+    os.remove('./data/input2')
+    os.remove('./data/input3')
+    os.remove('./data/input4')
+    os.remove('./data/output1')
+    os.remove('./data/output2')

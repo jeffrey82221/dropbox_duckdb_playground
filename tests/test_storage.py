@@ -5,7 +5,7 @@ import pyarrow as pa
 from src.filesystem import LocalBackend
 from src.rdb import DuckDBBackend
 from src.storage import PandasStorage, VaexStorage, PyArrowStorage
-
+from datetime import datetime
 
 @pytest.fixture
 def backends():
@@ -22,8 +22,8 @@ def test_upload_download(backends, storages):
         for Storage in storages:
             storage = Storage(backend)
             in_table = pd.DataFrame(
-                [[1, 2, 3, 4, 5]],
-                columns=['a', 'b', 'c', 'd', 'e']
+                [[1, 2, 3, 4, 5, datetime.now()]],
+                columns=['a', 'b', 'c', 'd', 'e', 'current-time']
             )
             if Storage == VaexStorage:
                 in_table = vx.from_pandas(in_table)
