@@ -50,7 +50,7 @@ def test_local_persistent():
     duckdb2.execute('select * from test2').arrow()
     os.remove('./data/test.duckdb')
 
-def test_dropbox_persistent_no_commit():
+def test_dropbox_persistent():
     db_name = 'data/no_commit.duckdb'
     duckdb = DuckDBBackend(persist_fs=DropboxBackend(), db_name=db_name)
     in_table = pa.Table.from_pydict(
@@ -66,7 +66,7 @@ def test_dropbox_persistent_no_commit():
     os.remove(f'./{db_name}')
 
 def test_dropbox_persistent_commit():
-    db_name = 'data/no_commit.duckdb'
+    db_name = 'data/with_commit.duckdb'
     duckdb = DuckDBBackend(persist_fs=DropboxBackend(), db_name=db_name)
     in_table = pa.Table.from_pydict(
         {'i': [1, 2, 3, 4],
