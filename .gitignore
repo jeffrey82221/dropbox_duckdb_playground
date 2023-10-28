@@ -1,3 +1,5 @@
+# Large Data 
+examples/data
 # Byte-compiled / optimized / DLL files
 *.ini
 __pycache__/
