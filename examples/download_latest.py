@@ -1,8 +1,8 @@
 
 """
+Download Latest Json for all package on PyPi
 TODO:
-- [X] Create empty dataframe if not exists
-- [ ] Enable Multi-Thread Download for Update Mode
+- [ ] Try to devide and conquer the download for speed up the process. 
 """
 from typing import List, Dict, Tuple, Optional
 import requests
@@ -124,5 +124,8 @@ class LatestDownload(DFProcessor):
         
 if __name__ == '__main__':
     storage = PandasStorage(LocalBackend('./data/'))
-    op2 = LatestDownload(storage, storage, test_count=1000)
+    op2 = LatestDownload(storage, storage, test_count=10)
     op2.execute()
+    # import pprint
+    # result = op2._update_with_etag('pandas', '123')
+    # pprint.pprint(result[0]['info']['requires_dist'])
