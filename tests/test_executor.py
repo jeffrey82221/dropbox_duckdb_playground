@@ -1,10 +1,9 @@
 import pytest
 from typing import Dict
-from src.etl import SQLExecutor
-from src.rdb import DuckDBBackend
-from src.storage import PyArrowStorage
+from batch_framework.etl import SQLExecutor
+from batch_framework.rdb import DuckDBBackend
+from batch_framework.storage import PyArrowStorage
 import pandas as pd
-import os
 
 
 class MyExecutor(SQLExecutor):

@@ -2,9 +2,9 @@ import pytest
 import pandas as pd
 import vaex as vx
 import pyarrow as pa
-from src.filesystem import LocalBackend
-from src.rdb import DuckDBBackend
-from src.storage import PandasStorage, VaexStorage, PyArrowStorage
+from batch_framework.filesystem import LocalBackend
+from batch_framework.rdb import DuckDBBackend
+from batch_framework.storage import PandasStorage, VaexStorage, PyArrowStorage
 from datetime import datetime
 
 @pytest.fixture

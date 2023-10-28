@@ -1,11 +1,11 @@
 import pytest
-from src.etl import DFProcessor
+from batch_framework.etl import DFProcessor
 from typing import List
 import pandas as pd
 import vaex as vx
 import os
-from src.filesystem import LocalBackend
-from src.storage import PandasStorage, VaexStorage
+from batch_framework.filesystem import LocalBackend
+from batch_framework.storage import PandasStorage, VaexStorage
 
 
 class PDOperator(DFProcessor):

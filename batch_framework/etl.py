@@ -25,6 +25,10 @@ class ETL:
     """
     Basic Interface for defining a unit of ETL flow.
     """
+    def __init__(self):
+        assert isinstance(self.input_ids, list), 'def input_ids should be a property returning a list of str'
+        assert isinstance(self.output_ids, list), 'def output_ids should be a property returning a list of str'
+
     @abc.abstractproperty
     def input_ids(self) -> List[str]:
         """
@@ -55,6 +59,7 @@ class SQLExecutor(ETL):
     """
     def __init__(self, rdb: RDB):
         self._rdb = rdb
+        super().__init__()
 
     @abc.abstractmethod
     def sqls(self, **kwargs) -> Dict[str, str]:
@@ -88,6 +93,7 @@ class DFProcessor(ETL):
     def __init__(self, input_storage: Storage, output_storage: Storage):
         self._input_storage = input_storage
         self._output_storage = output_storage
+        super().__init__()
 
     @abc.abstractmethod
     def transform(self, inputs: List[object], **kwargs) -> List[object]:
@@ -106,11 +112,14 @@ class DFProcessor(ETL):
             **kwargs: some additional variable passed from scheduling engine (e.g., Airflow)
         Run ETL (extract, transform, and load)
         """
-        input_objs = self._extract(**kwargs)
-        assert isinstance(
-            input_objs, list), 'Input of transform should be a list of object'
-        assert all([isinstance(obj, self.get_input_type()) for obj in input_objs]
-                ), f'One of the input_obj is not {self.get_input_type()}'
+        if len(self.input_ids):
+            input_objs = self._extract(**kwargs)
+            assert isinstance(
+                input_objs, list), 'Input of transform should be a list of object'
+            assert all([isinstance(obj, self.get_input_type()) for obj in input_objs]
+                    ), f'One of the input_obj is not {self.get_input_type()}'
+        else:
+            input_objs = []
         output_objs = self.transform(input_objs, **kwargs)
         assert isinstance(
             output_objs, list), 'Output of transform should be a list of object'

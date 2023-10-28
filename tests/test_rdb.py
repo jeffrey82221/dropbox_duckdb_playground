@@ -3,8 +3,8 @@ TODO:
 - [X] Add testing on dropbox-based persistent usage. 
 """
 import pytest
-from src.rdb import DuckDBBackend
-from src.filesystem import LocalBackend, DropboxBackend
+from batch_framework.rdb import DuckDBBackend
+from batch_framework.filesystem import LocalBackend, DropboxBackend
 import pyarrow as pa
 from duckdb.duckdb import ConnectionException, CatalogException
 import os

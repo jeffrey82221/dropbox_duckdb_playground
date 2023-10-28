@@ -118,6 +118,7 @@ class DropboxBackend(FileSystem):
 class LocalBackend(FileSystem):
     def __init__(self, directory='./'):
         self._directory = directory
+        assert self._directory.endswith('/'), 'Please make sure directory endswith /'
 
     def upload_core(self, file_obj: io.BytesIO, remote_path: str):
         """Upload file object to local storage
