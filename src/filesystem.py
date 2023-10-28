@@ -63,8 +63,10 @@ class DropboxBackend(FileSystem):
     """
 
     def __init__(self, directory='/'):
-        token = os.getenv('DROPBOX_TOKEN')
-        self._dbx = dropbox.Dropbox(token)
+        self._dbx = dropbox.Dropbox(
+            app_key = os.getenv('DROPBOX_APP_KEY'),
+            app_secret = os.getenv('DROPBOX_APP_SECRET'),
+            oauth2_refresh_token = os.getenv('DROPBOX_TOKEN'))
         super().__init__(directory)
 
     def upload_core(self, file_obj: io.BytesIO, remote_path: str):
