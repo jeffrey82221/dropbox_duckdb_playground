@@ -28,6 +28,9 @@ class ETL:
     def __init__(self):
         assert isinstance(self.input_ids, list), 'def input_ids should be a property returning a list of str'
         assert isinstance(self.output_ids, list), 'def output_ids should be a property returning a list of str'
+        assert len(set(self.input_ids) & set(self.output_ids)) == 0, 'There should not be an object_id on both input_ids and output_ids'
+        assert len(self.input_ids) == len(set(self.input_ids)), 'There should no be repeated id in self.input_ids'
+        assert len(self.output_ids) == len(set(self.output_ids)), 'There should no be repeated id in self.output_ids'
 
     @abc.abstractproperty
     def input_ids(self) -> List[str]:
