@@ -1,14 +1,14 @@
-import duckdb
-import pandas as pd
-# create a connection to a file called 'file.db'
-con = duckdb.connect('file.db')
-# create a table and load data into it
-# con.sql('CREATE TABLE test(i INTEGER)')
-# con.sql('INSERT INTO test VALUES (42)')
-# query the table
-con.register('a', pd.DataFrame([1,2,3]))
-con.execute('create table b as (select * from a)')
-con.table('b').show()
-con.execute('select * from b;')
-# explicitly close the connection
-con.close()
+import pprint
+import requests
+pkg_name = 'apache-airflow'
+url = f'https://pypi.org/pypi/{pkg_name}/json'
+data = requests.get(url).json()
+
+versions = list(data['releases'].keys())
+print(data['info']['platform'])
+"""
+for version in versions[:10]:
+    url = f"https://pypi.org/pypi/{pkg_name}/{version}/json"
+    result = requests.get(url).json()
+    pprint.pprint(result)
+"""
