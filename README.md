@@ -59,8 +59,7 @@ ETL function and a `Platform` class in which allow `Layers` to be stacked.  logi
 
 ## Layer Design
 
-- Zero Layer: save raw json into dropbox
-- Blonze Layer: convert json to tabular data
+- Blonze Layer: Call API and convert json to tabular data
     - one table for all the simple fields
     - multiple tables each for one complex field
 - Silver 1: extract node and link tables

@@ -12,7 +12,7 @@ Else:
     -> Run SQL in DuckDB
     -> Take output from DuckDB and save to output storage.
 """
-from typing import List, Dict
+from typing import List, Dict, Optional
 import abc
 from .storage import Storage
 from .rdb import RDB
@@ -90,9 +90,17 @@ class DFProcessor(ETL):
     """
     Basic Interface for defining a dataframe processing unit of ETL flow.
     """
-    def __init__(self, input_storage: Storage, output_storage: Storage):
+    def __init__(self, input_storage: Storage, output_storage: Optional[Storage]=None, feedback_ids: List[str]=[]):
         self._input_storage = input_storage
-        self._output_storage = output_storage
+        if output_storage is None:
+            self._output_storage = input_storage
+        else:
+            self._output_storage = output_storage
+        assert isinstance(self._input_storage, Storage), f'input_storage should be Storage rather than: {type(self._input_storage)}'
+        assert isinstance(self._output_storage, Storage), f'output_storage should be Storage rather than: {type(self._output_storage)}'
+        for id in feedback_ids:
+            assert id in self.output_ids, f'Each of feedback_ids should be one of output_ids, but {id} is not'
+        self._feedback_ids = feedback_ids
         super().__init__()
 
     @abc.abstractmethod
@@ -112,20 +120,24 @@ class DFProcessor(ETL):
             **kwargs: some additional variable passed from scheduling engine (e.g., Airflow)
         Run ETL (extract, transform, and load)
         """
+        # Extraction Step 
         if len(self.input_ids):
-            input_objs = self._extract(**kwargs)
-            assert isinstance(
-                input_objs, list), 'Input of transform should be a list of object'
-            assert all([isinstance(obj, self.get_input_type()) for obj in input_objs]
-                    ), f'One of the input_obj is not {self.get_input_type()}'
+            input_objs = self._extract_inputs()
         else:
             input_objs = []
+        # Extract outputs and load into kwargs
+        feedback_objs = self._extract_feedback()
+        # Output Post-Validation
+        kwargs.update(feedback_objs)
+        # Transformation Step
         output_objs = self.transform(input_objs, **kwargs)
+        # Output Validation
         assert isinstance(
             output_objs, list), 'Output of transform should be a list of object'
         assert all([isinstance(obj, self.get_output_type()) for obj in output_objs]
                 ), f'One of the output_obj is not {self.get_output_type()}'
-        self._load(output_objs, **kwargs)
+        # Load Step
+        self._load(output_objs)
 
     def get_input_type(self):
         return self.transform.__annotations__['inputs'].__args__[0]
@@ -133,22 +145,38 @@ class DFProcessor(ETL):
     def get_output_type(self):
         return self.transform.__annotations__['return'].__args__[0]
 
-    def _extract(self, **kwargs) -> List[object]:
+    def _extract_inputs(self) -> List[object]:
         """
-        Args:
-            **kwargs: some additional variable passed from scheduling engine (e.g., Airflow)
         Returns:
             List[object]: List of dataframe object to be passed to `transform`.
         """
         input_tables = [self._input_storage.download(
             id) for id in self.input_ids]
+        assert all([isinstance(obj, self.get_input_type()) for obj in input_tables]
+                    ), f'One of the input_obj is not {self.get_input_type()}'
         return input_tables
 
-    def _load(self, output_tables: List[object], **kwargs):
+    def _extract_feedback(self) -> Dict[str, object]:
+        """extract table from output to feedback to transform method
+
+        Returns:
+            Dict[str, object]: contains dataframe object to be passed to `transform` in
+            **kwargs
+                - key: The feedback output id
+                - value: The downloaded dataframe object
+        """
+        if len(self._feedback_ids):
+            output_tables = [(id, self._output_storage.download(id)) for id in self._feedback_ids]
+            assert all([isinstance(obj, self.get_input_type()) for id, obj in output_tables]
+                        ), f'One of the input_obj is not {self.get_input_type()}'
+            return dict(output_tables)
+        else:
+            return dict()
+
+    def _load(self, output_tables: List[object]):
         """
         Args:
             output_tables: List[object]: List of dataframe object passed from `transform`.
-            **kwargs: some additional variable passed from scheduling engine (e.g., Airflow)
         """
         for id, table in zip(self.output_ids, output_tables):
             self._output_storage.upload(table, id)

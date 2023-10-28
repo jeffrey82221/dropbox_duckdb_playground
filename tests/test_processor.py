@@ -1,3 +1,9 @@
+"""
+TODO:
+- [ ] Allow passing only one storage, automatically let output_storage = input_storage
+- [ ] Allow using dataframe of output_ids in transform (good for upsert/update operation)
+"""
+
 import pytest
 from batch_framework.etl import DFProcessor
 from typing import List
@@ -8,7 +14,7 @@ from batch_framework.filesystem import LocalBackend
 from batch_framework.storage import PandasStorage, VaexStorage
 
 
-class PDOperator(DFProcessor):
+class PDOperator(DFProcessor):        
     @property
     def input_ids(self):
         return [
@@ -22,7 +28,7 @@ class PDOperator(DFProcessor):
             'output1'
         ]
 
-    def transform(self, inputs: List[pd.DataFrame]) -> List[pd.DataFrame]:
+    def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
         return [inputs[0] + inputs[1]]
 
 
@@ -40,7 +46,7 @@ class VXOperator(DFProcessor):
             'output2'
         ]
 
-    def transform(self, inputs: List[vx.DataFrame]) -> List[vx.DataFrame]:
+    def transform(self, inputs: List[vx.DataFrame], **kwargs) -> List[vx.DataFrame]:
         return [vx.concat([inputs[0], inputs[1]])]
 
 
@@ -49,9 +55,10 @@ def pd_op():
     storage = PandasStorage(LocalBackend('./data/'))
     storage.upload(pd.DataFrame([1, 2, 3]), 'input1')
     storage.upload(pd.DataFrame([1, 1, 1]), 'input2')
+    storage.upload(pd.DataFrame([], columns=['a', 'b', 'c']), 'output1')
     op = PDOperator(
         input_storage=storage,
-        output_storage=storage
+        feedback_ids=['output1']
     )
     return op
 
@@ -87,10 +94,10 @@ def test_get_output_type(pd_op, vx_op):
 
 
 def test_execute(pd_op, vx_op):
-    pd_op.execute()
+    pd_op.execute(time='time')
     output = pd_op._output_storage.download('output1')
     pd.testing.assert_frame_equal(output, pd.DataFrame([2, 3, 4]))
-    vx_op.execute()
+    vx_op.execute(time='time')
     output = vx_op._output_storage.download('output2')
     pd.testing.assert_frame_equal(
         output.to_pandas_df(),

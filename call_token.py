@@ -33,6 +33,7 @@ def get_refresh_token(access_code_generated):
 if __name__ == '__main__':
     url = f'https://www.dropbox.com/oauth2/authorize?client_id={APP_KEY}&token_access_type=offline&response_type=code'
     print(f'Goto: \n{url}\n and regrenerate access code.')
-    dropbox_access_token = input('dropbox_access_token:')
+    dropbox_access_token = input('dropbox_access_token:\n')
     token = get_refresh_token(dropbox_access_token)
     os.environ["DROPBOX_TOKEN"] = token
+    print(f'export DROPBOX_TOKEN={token}')

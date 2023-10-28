@@ -12,24 +12,24 @@ from batch_framework.storage import PandasStorage
 from batch_framework.etl import DFProcessor
 
 class LatestDownload(DFProcessor):
-    def __init__(self, input_storage, output_storage, test_count: Optional[int]=None):
-        assert input_storage == output_storage, 'Should using the same storage here'
-        super().__init__(input_storage=input_storage, output_storage=output_storage)
-        self._test_count = test_count
+    def __init__(self, input_storage, test_count: Optional[int]=None):
         if not input_storage._backend.check_exists('latest.parquet'):
             latest_df = pd.DataFrame.from_records([], columns=['name', 'latest', 'etag'])
             input_storage.upload(latest_df, 'latest.parquet')
+        super().__init__(input_storage=input_storage, feedback_ids=['latest.parquet'])
+        self._test_count = test_count
 
     @property
     def input_ids(self):
-        return ['package_names.parquet', 'latest.parquet']
+        return ['package_names.parquet']
 
     @property
     def output_ids(self):
         return ['latest.parquet']
     
-    def transform(self, inputs: List[pd.DataFrame]) -> List[pd.DataFrame]:
-        pkg_name_df, latest_df = inputs
+    def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
+        latest_df = kwargs['latest.parquet']
+        pkg_name_df = inputs[0]
         print('Package Name Count:', len(pkg_name_df))
         print('Latest Count:', len(latest_df))
         new_pkg_names = self._get_new_package_names(pkg_name_df, latest_df)
@@ -124,8 +124,5 @@ class LatestDownload(DFProcessor):
         
 if __name__ == '__main__':
     storage = PandasStorage(LocalBackend('./data/'))
-    op2 = LatestDownload(storage, storage, test_count=10)
+    op2 = LatestDownload(storage, test_count=10)
     op2.execute()
-    # import pprint
-    # result = op2._update_with_etag('pandas', '123')
-    # pprint.pprint(result[0]['info']['requires_dist'])
