@@ -1,7 +1,8 @@
 
 """
 TODO:
-- create empty dataframe if not exists
+- [X] Create empty dataframe if not exists
+- [ ] Enable Multi-Thread Download for Update Mode
 """
 from typing import List, Dict, Tuple, Optional
 import requests

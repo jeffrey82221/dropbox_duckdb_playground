@@ -3,8 +3,22 @@ Experiment with new ETL architecture: using Dropbox as storage, Duckdb + Python 
 
 # Steps:
 
-1. Setup connection to Google Drive following: https://pythonhosted.org/PyDrive/quickstart.html
-
+1. Setup connection to Dropbox
+2. Build `ETL` object and `Storage` objects
+    - `ETL` for defining etl logic. 
+        - execute method: run etl
+        - input_ids / output_ids: a list of object ids to be recognized by `Storage`
+    - `Storage` for upload and download python object from remote storage. 
+3. Build `Scheduler` class takes etl as input and connect etl instance, input_ids, output_ids with `paradag`.
+4. Using paradag to generate execution order and stetch the execution to Github Action.
+5. Build a `Layer` class which can define layer-wise 
+ETL function and a `Platform` class in which allow `Layers` to be stacked.  logic. 
+    - `Layer`: 
+        - input_ids
+        - output_ids
+        - operations: a list of `ETL` class with inputs_ids and output_ids mapped to those of `Layer` object. (Should be same subclass)
+        - __init__: same args and kwargs setup as the `ETL` class in operations
+    - `Platform` Take multiple layers as input and connect the underlying `ETL` class to Scheduler
 # Future Plan: 
 
 1) Extend to various web sources
