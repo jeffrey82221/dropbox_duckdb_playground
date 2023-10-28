@@ -4,7 +4,7 @@ import vaex as vx
 import pyarrow as pa
 from batch_framework.filesystem import LocalBackend
 from batch_framework.rdb import DuckDBBackend
-from batch_framework.storage import PandasStorage, VaexStorage, PyArrowStorage
+from batch_framework.storage import PandasStorage, VaexStorage, PyArrowStorage, JsonStorage
 from datetime import datetime
 
 @pytest.fixture
@@ -40,3 +40,10 @@ def test_upload_download(backends, storages):
             else:
                 pd.testing.assert_frame_equal(
                     in_table.to_pandas_df(), out_table.to_pandas_df())
+
+def test_json_storage():
+    js = JsonStorage(LocalBackend('./data/'))
+    data = {'a': [1,2,3]}
+    js.upload(data, 'json_test.json')
+    result = js.download('json_test.json')
+    assert data == result

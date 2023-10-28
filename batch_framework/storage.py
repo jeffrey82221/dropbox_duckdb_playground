@@ -4,6 +4,8 @@ import vaex as vx
 import pyarrow as pa
 import pyarrow.parquet as pq
 import io
+from typing import Dict, List, Union
+import json
 from .backend import Backend
 from .filesystem import FileSystem
 from .filesystem import LocalBackend
@@ -43,13 +45,35 @@ class Storage:
         """
         raise NotImplementedError
 
+class JsonStorage(Storage):
+    """
+    Storage of JSON Python Diction 
+    """
+    def __init__(self, filesystem: FileSystem):
+        assert isinstance(filesystem, FileSystem), 'Json Storage should have FileSystem backend'
+        super().__init__(backend=filesystem)
+
+    def upload(self, json_obj: Union[Dict, List], obj_id: str):
+        """Upload a python object as json on a filesystem
+
+        Args:
+            json (Union[Dict, List]): A json parsable python object
+            obj_id (str): The id of the object
+        """
+        buff = io.BytesIO(json.dumps(json_obj).encode())
+        self._backend.upload_core(buff, obj_id)
+    
+    def download(self, obj_id: str) -> Union[Dict, List]:
+        buff = self._backend.download_core(obj_id)
+        buff.seek(0)
+        return json.loads(buff.read().decode())
 
 class PandasStorage(Storage):
     """
     Storage of Pandas DataFrame
     """
 
-    def __init__(self, backend):
+    def __init__(self, backend: Backend):
         super().__init__(backend=backend)
 
     def upload(self, pandas: pd.DataFrame, obj_id: str):
@@ -77,7 +101,7 @@ class PandasStorage(Storage):
 class PyArrowStorage(Storage):
     """Storage of pyarrow Table
     """
-    def __init__(self, backend):
+    def __init__(self, backend: Backend):
         super().__init__(backend=backend)
 
     def upload(self, pyarrow: pa.Table, obj_id: str):
@@ -105,7 +129,7 @@ class VaexStorage(Storage):
     """Storage of Polars DataFrame
     """
 
-    def __init__(self, backend):
+    def __init__(self, backend: Backend):
         super().__init__(backend=backend)
 
     def upload(self, vaex: vx.DataFrame, obj_id: str):

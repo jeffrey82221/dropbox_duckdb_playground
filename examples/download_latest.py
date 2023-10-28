@@ -124,5 +124,5 @@ class LatestDownload(DFProcessor):
         
 if __name__ == '__main__':
     storage = PandasStorage(LocalBackend('./data/'))
-    op2 = LatestDownload(storage, storage)
+    op2 = LatestDownload(storage, storage, test_count=1000)
     op2.execute()
