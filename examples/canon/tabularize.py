@@ -5,30 +5,25 @@ Convert pandas with JSON column to plain pandas dataframe
 from typing import List, Dict, Union
 import pandas as pd
 import numpy as np
-from batch_framework.filesystem import LocalBackend
-from batch_framework.storage import PandasStorage
 from batch_framework.etl import DFProcessor
 
-class LatestOrganizer(DFProcessor):
-    def __init__(self, input_storage, output_storage):
-        super().__init__(input_storage=input_storage, output_storage=output_storage)
-
+class LatestTabularize(DFProcessor):
     @property
     def input_ids(self):
-        return ['latest.parquet']
+        return ['latest']
 
     @property
     def output_ids(self):
-        return ['latest_package.parquet', 'latest_requirement.parquet', 'latest_url.parquet']
+        return ['latest_package', 'latest_requirement', 'latest_url']
     
     def transform(self, inputs: List[pd.DataFrame]) -> List[pd.DataFrame]:
         infos = []
         reqs = []
         urls = []
         for record in inputs[0].to_dict('records'):
-            info = LatestOrganizer.simplify_record(record)
-            _reqs = LatestOrganizer.simplify_requires_dist(record)
-            _urls = LatestOrganizer.simplify_project_urls(record)            
+            info = LatestTabularize.simplify_record(record)
+            _reqs = LatestTabularize.simplify_requires_dist(record)
+            _urls = LatestTabularize.simplify_project_urls(record)            
             infos.append(info)
             reqs.extend(_reqs)
             urls.extend(_urls)
@@ -59,7 +54,7 @@ class LatestOrganizer(DFProcessor):
             'requires_python': record['latest']['info']['requires_python'],
             'version': record['latest']['info']['version'],
             'keywords': record['latest']['info']['keywords'],
-            'num_releases': len(record['latest']['info']['releases']) if 'releases' in record['latest']['info'] and isinstance(record['latest']['info']['releases'], list) else 0,
+            'num_releases': len(record['latest']['releases']),
             'author': record['latest']['info']['author'],
             'author_email': record['latest']['info']['author_email'],
             'maintainer': record['latest']['info']['maintainer'],
@@ -110,8 +105,3 @@ class LatestOrganizer(DFProcessor):
             ]
         else:
             return []
-    
-if __name__ == '__main__':
-    storage = PandasStorage(LocalBackend('./data/'))
-    op2 = LatestOrganizer(storage, storage)
-    op2.execute()

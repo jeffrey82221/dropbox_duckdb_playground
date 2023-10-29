@@ -7,28 +7,29 @@ TODO:
 from typing import List, Dict, Tuple, Optional
 import requests
 import pandas as pd
-from batch_framework.filesystem import LocalBackend
-from batch_framework.storage import PandasStorage
 from batch_framework.etl import DFProcessor
+from batch_framework.storage import PandasStorage
 
-class LatestDownload(DFProcessor):
-    def __init__(self, input_storage, test_count: Optional[int]=None):
-        if not input_storage._backend.check_exists('latest.parquet'):
-            latest_df = pd.DataFrame.from_records([], columns=['name', 'latest', 'etag'])
-            input_storage.upload(latest_df, 'latest.parquet')
-        super().__init__(input_storage=input_storage, feedback_ids=['latest.parquet'])
+class LatestCrawler(DFProcessor):
+    def __init__(self, input_storage: PandasStorage, test_count: Optional[int]=None):
+        super().__init__(input_storage=input_storage, feedback_ids=['latest'])
         self._test_count = test_count
+
+    def create_output(self):
+        if not self._input_storage._backend.check_exists('latest'):
+            latest_df = pd.DataFrame.from_records([], columns=['name', 'latest', 'etag'])
+            self._input_storage.upload(latest_df, 'latest')
 
     @property
     def input_ids(self):
-        return ['package_names.parquet']
+        return ['name_trigger']
 
     @property
     def output_ids(self):
-        return ['latest.parquet']
+        return ['latest']
     
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
-        latest_df = kwargs['latest.parquet']
+        latest_df = kwargs['latest']
         pkg_name_df = inputs[0]
         print('Package Name Count:', len(pkg_name_df))
         print('Latest Count:', len(latest_df))
@@ -121,8 +122,3 @@ class LatestDownload(DFProcessor):
         else:
             print(f'[_update_with_etag] {name} latest skipped due to 304')
             return None
-        
-if __name__ == '__main__':
-    storage = PandasStorage(LocalBackend('./data/'))
-    op2 = LatestDownload(storage, test_count=10)
-    op2.execute()

@@ -1,0 +1,14 @@
+# TODO:
+- [X] Canonicalization Layer
+    - [X] Trigger layer: package_list.py
+    - [X] Crawling Layer: download_latest.py
+    - [X] Tabularize: json2dataframe.py
+    - [X] Rename file and Group into Same Layer
+- [ ] Sub-graph Extraction Layer
+    - [X] Extract Nodes
+    - [X] Extract Links
+    - [ ] Define relationship between node types and link types
+    - [ ] ID validate
+- [ ] Graph Merging Layer
+    - [ ] Define super node where nodes to be grouped into
+    - [ ] Define super link where links to be grouped into
