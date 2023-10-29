@@ -58,7 +58,7 @@ class DuckDBBackend(RDB):
                     lb = LocalBackend()
                     lb.upload_core(buff, self._db_name)
                     assert os.path.exists('./' + db_name), f'db_name: {db_name} does not exist'
-            super().__init__('', duckdb.connect(database='./' + db_name))
+            super().__init__('', duckdb.connect(database=persist_fs._directory + db_name))
         else:
             super().__init__('', duckdb.connect(database=':memory:'))
 

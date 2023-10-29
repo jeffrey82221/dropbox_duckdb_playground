@@ -52,8 +52,27 @@ class ETL:
         """
         raise NotImplementedError
     
-    @abc.abstractmethod
     def execute(self, **kwargs):
+        self.start(**kwargs)
+        self._execute(**kwargs)
+        self.end(**kwargs)
+        
+    @abc.abstractmethod
+    def start(self, **kwargs) -> None:
+        """Define some action before execute start
+        e.g., creating output table if not exists
+        """
+        pass
+
+    @abc.abstractmethod
+    def end(self, **kwargs) -> None:
+        """Define some action after execute end
+        e.g., validate the ouput data
+        """
+        pass
+
+    @abc.abstractmethod
+    def _execute(self, **kwargs):
         """Execute ETL 
         """
         raise NotImplementedError
@@ -90,12 +109,12 @@ class SQLExecutor(ETL):
         """
         raise NotImplementedError
 
-    def execute(self, **kwargs):
+    def _execute(self, **kwargs):
         """
         Args:
             **kwargs: some additional variable passed from scheduling engine (e.g., Airflow)
         """
-        assert all([id in self.sqls(**kwargs) for id in self.output_ids]), 'sqls key should corresponds to the output_ids'
+        assert set(self.sqls(**kwargs).keys()) == set(self.output_ids), 'sqls key should corresponds to the output_ids'
         # Extract Table and Load into RDB from FileSystem
         if self._input_storage is not None:
             [self._rdb.register(id, self._input_storage.download(id)) for id in self.input_ids]
@@ -138,7 +157,7 @@ class DFProcessor(ETL):
         raise NotImplementedError
 
 
-    def execute(self, **kwargs):
+    def _execute(self, **kwargs):
         """
         Args:
             **kwargs: some additional variable passed from scheduling engine (e.g., Airflow)
