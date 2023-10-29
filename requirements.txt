@@ -4,3 +4,5 @@ dropbox
 pyarrow
 duckdb
 paradag
+dedupe
+icecream
