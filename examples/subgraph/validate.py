@@ -30,8 +30,13 @@ class IDValidator(DFProcessor):
         link_df = inputs[0]
         src_node_df = inputs[1]
         target_node_df = inputs[2]
+        print('subgraph', self._link, '- #Link:', len(link_df))
+        print('subgraph', self._link, '- #Src Nodes:', len(src_node_df))
+        print('subgraph', self._link, '- #Target Nodes:', len(target_node_df))
         link_src_ids = set(link_df.from_id.tolist())
+        print('subgraph', self._link, '- #Link Src Nodes:', len(link_src_ids))
         link_target_ids = set(link_df.to_id.tolist())
+        print('subgraph', self._link, '- #Link Target Nodes:', len(link_target_ids))
         src_ids = set(src_node_df.node_id.tolist())
         target_ids = set(target_node_df.node_id.tolist())
         assert link_src_ids.issubset(src_ids), 'some source node in link is not in the source node table'

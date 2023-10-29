@@ -9,7 +9,7 @@ import requests
 import pandas as pd
 from batch_framework.etl import DFProcessor
 from batch_framework.storage import PandasStorage
-
+from tqdm import tqdm
 class LatestCrawler(DFProcessor):
     def __init__(self, input_storage: PandasStorage, test_count: Optional[int]=None):
         super().__init__(input_storage=input_storage, feedback_ids=['latest'])
@@ -63,7 +63,7 @@ class LatestCrawler(DFProcessor):
                 - etag: etag
         """
         results = []
-        for name in names:
+        for i, name in enumerate(names):
             url = f"https://pypi.org/pypi/{name}/json"
             res = requests.get(url)
             if res.status_code == 404:
@@ -72,7 +72,7 @@ class LatestCrawler(DFProcessor):
             assert res.status_code == 200, f'response status code is {res.status_code}'
             latest = res.json()
             etag = res.headers["ETag"]
-            print(f'[_get_new_package_records] {name} latest downloaded.')
+            print(f'[_get_new_package_records] {i+1}/{len(names)} {name} latest downloaded.')
             results.append((name, latest, etag))
         return pd.DataFrame.from_records(results, columns=['name', 'latest', 'etag'])
 
@@ -87,11 +87,15 @@ class LatestCrawler(DFProcessor):
             new_df (Schema same as latest_df but only holds name of updated records)
         """
         results = []
-        for name, etag in zip(latest_df.name.tolist(), latest_df.etag.tolist()):
+        total = len(latest_df)
+        for i, (name, etag) in enumerate(zip(latest_df.name.tolist(), latest_df.etag.tolist())):
             result = self._update_with_etag(name, etag)
             if result is not None:
                 latest, etag = result
                 results.append((name, latest, etag))
+                print(f'[_get_updated_package_records] {i+1}/{total} {name} Download')
+            else:
+                print(f'[_get_updated_package_records] {i}/{total} {name} Skipped')
         return pd.DataFrame.from_records(results, columns=['name', 'latest', 'etag'])
     
     def _update_with_etag(self, name: str, etag: str) -> Optional[Tuple[Dict, str]]:
@@ -111,14 +115,11 @@ class LatestCrawler(DFProcessor):
         url = f"https://pypi.org/pypi/{name}/json"
         res = requests.get(url, headers={"If-None-Match": etag})
         if res.status_code == 404:
-            print(f'[_update_with_etag] {name} latest skipped due to 404')
             return None
         assert res.status_code in [200, 304], f'response status code is {res.status_code}'
         if res.status_code == 200:
             latest = res.json()
             etag = res.headers["ETag"]
-            print(f'[_update_with_etag] {name} latest updated')
             return latest, etag
         else:
-            print(f'[_update_with_etag] {name} latest skipped due to 304')
             return None

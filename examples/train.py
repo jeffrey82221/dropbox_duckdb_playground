@@ -70,7 +70,7 @@ class MappingTrainer(DFProcessor):
         for record in df.to_dict('records'):
             results.append((record['node_id'], {
                 'full_name': record['name'],
-                'before_whitespace': record['name'].split(' ')[0],
+                'before_whitespace': record['name'].split(' ')[0].split(';')[0],
                 'before_upper_bracket': record['name'].split('[')[0],
                 'before_marks': record['name'].split('<')[0].split('>')[0].split('=')[0]
             }))
