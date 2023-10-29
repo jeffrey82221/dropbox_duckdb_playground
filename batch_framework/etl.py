@@ -14,7 +14,8 @@ Else:
 """
 from typing import List, Dict, Optional
 import abc
-from .storage import Storage
+from .storage import Storage, PyArrowStorage
+from .filesystem import FileSystem
 from .rdb import RDB
 
 __all__ = [
@@ -60,8 +61,19 @@ class ETL:
 class SQLExecutor(ETL):
     """Basic interface for SQL executor
     """
-    def __init__(self, rdb: RDB):
+    def __init__(self, rdb: RDB, input_fs: Optional[FileSystem]=None, output_fs: Optional[FileSystem]=None):
+        assert isinstance(rdb, RDB), 'rdb is not RDB type'
         self._rdb = rdb
+        if input_fs is not None:
+            assert isinstance(input_fs, FileSystem), 'input_storage of SQLExecutor should be FileSystem'
+            self._input_storage = PyArrowStorage(input_fs)
+        else:
+            self._input_storage = None
+        if output_fs is not None:
+            assert isinstance(output_fs, FileSystem), 'output_storage of SQLExecutor should be FileSystem'
+            self._output_storage = PyArrowStorage(output_fs)
+        else:
+            self._output_storage = None
         super().__init__()
 
     @abc.abstractmethod
@@ -84,11 +96,20 @@ class SQLExecutor(ETL):
             **kwargs: some additional variable passed from scheduling engine (e.g., Airflow)
         """
         assert all([id in self.sqls(**kwargs) for id in self.output_ids]), 'sqls key should corresponds to the output_ids'
+        # Extract Table and Load into RDB from FileSystem
+        if self._input_storage is not None:
+            [self._rdb.register(id, self._input_storage.download(id)) for id in self.input_ids]
+        # Do transform using SQL on RDB
         for output_id, sql in self.sqls(**kwargs).items():
             self._rdb.execute(f'''
                   CREATE TABLE {output_id} AS ({sql});
             ''')
-    
+        # Load Table into FileSystem from RDB
+        if self._output_storage is not None:
+            for id in self.output_ids:
+                table = self._rdb.execute(f'SELECT * FROM {id}').arrow()
+                self._output_storage.upload(table, id)
+
 class DFProcessor(ETL):
     """
     Basic Interface for defining a dataframe processing unit of ETL flow.
