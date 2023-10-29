@@ -101,10 +101,3 @@ class LinkExtractor(SQLExecutor):
         }
 
 
-if __name__ == '__main__':
-    fs = LocalBackend('./data/')
-    db = DuckDBBackend()
-    extractor = LinkExtractor(db, input_fs=fs)
-    extractor.execute()
-    table = extractor._rdb.execute('SELECT * FROM has_project_url').df()
-    print(table.to_numpy()[0:100, :])

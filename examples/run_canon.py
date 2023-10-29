@@ -11,6 +11,5 @@ op3 = LatestTabularize(input_storage=tmp_fs, output_storage=output_fs)
 
 if __name__ == '__main__':
     op1.execute()
-    op2.create_output()
     op2.execute()
     op3.execute()

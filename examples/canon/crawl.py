@@ -15,7 +15,7 @@ class LatestCrawler(DFProcessor):
         super().__init__(input_storage=input_storage, feedback_ids=['latest'])
         self._test_count = test_count
 
-    def create_output(self):
+    def start(self, **kwargs):
         if not self._input_storage._backend.check_exists('latest'):
             latest_df = pd.DataFrame.from_records([], columns=['name', 'latest', 'etag'])
             self._input_storage.upload(latest_df, 'latest')

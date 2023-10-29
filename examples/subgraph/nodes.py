@@ -34,6 +34,7 @@ class NodeExtractor(SQLExecutor):
             # Main Package Node
             'package': """
             SELECT
+                DISTINCT ON (pkg_name)
                 HASH(pkg_name) AS node_id,
                 name,
                 package_url,
@@ -115,11 +116,3 @@ class NodeExtractor(SQLExecutor):
             """
         }
 
-
-if __name__ == '__main__':
-    fs = LocalBackend('./data/')
-    db = DuckDBBackend()
-    extractor = NodeExtractor(db, input_fs=fs)
-    extractor.execute()
-    table = extractor._rdb.execute('SELECT * FROM project_url').df()
-    print(table.to_numpy()[0:100, :])
