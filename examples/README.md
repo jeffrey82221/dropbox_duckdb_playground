@@ -4,11 +4,14 @@
     - [X] Crawling Layer: download_latest.py
     - [X] Tabularize: json2dataframe.py
     - [X] Rename file and Group into Same Layer
-- [ ] Sub-graph Extraction Layer
+- [X] Sub-graph Extraction Layer
     - [X] Extract Nodes
     - [X] Extract Links
-    - [ ] Define relationship between node types and link types
-    - [ ] ID validate
+    - [X] Define relationship between node types and link types
+    - [X] ID validate
 - [ ] Graph Merging Layer
-    - [ ] Define super node where nodes to be grouped into
-    - [ ] Define super link where links to be grouped into
+    - [ ] Define super node where nodes to be grouped into each other 
+        - [ ] Generate cluster_id for each node source.
+    - [ ] Define super link where links to be grouped into each other
+    - [ ] Enable entity resolution for nodes
+    - [ ] Auto-generating source data 
