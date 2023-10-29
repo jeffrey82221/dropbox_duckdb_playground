@@ -52,8 +52,6 @@ ETL function and a `Platform` class in which allow `Layers` to be stacked.  logi
     - info.license
 - Related URLs
     - info.docs_url
-    - info.package_url
-    - info.project_url
     - info.home_page
     - info.project_urls (Dict)
 
