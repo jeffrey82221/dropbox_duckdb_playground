@@ -1,4 +1,7 @@
 """
+TODO:
+- [ ] Split SQL executor and Processor
+- [ ] Rename DFProcessor as Object Processor
 SQL Process
 NOTE:
 How to process with SQL?
