@@ -5,7 +5,7 @@ TODO:
 - [ ] Build Threshold Tunner
 - [X] Build Learning ETL
 - [X] Build Mapping Table ETL
-- [ ] Incorprate Node Merging into a GroupMerging Platform
+- [ ] Incorprate Node Merging into a GraphMerging Platform
 """
 from typing import List, Dict, Callable
 import pandas as pd

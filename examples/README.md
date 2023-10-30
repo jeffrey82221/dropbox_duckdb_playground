@@ -10,8 +10,8 @@
     - [X] Define relationship between node types and link types
     - [X] ID validate
 - [ ] Graph Merging Layer
-    - [ ] Define super node where nodes to be grouped into each other 
-        - [ ] Generate cluster_id for each node source.
+    - [X] Define super node where nodes to be grouped into each other 
+        - [X] Generate cluster_id for each node source.
     - [ ] Define super link where links to be grouped into each other
     - [ ] Enable entity resolution for nodes
     - [ ] Auto-generating source data 
