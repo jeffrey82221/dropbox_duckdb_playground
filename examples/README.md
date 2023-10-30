@@ -10,8 +10,16 @@
     - [X] Define relationship between node types and link types
     - [X] ID validate
 - [ ] Graph Merging Layer
-    - [X] Define super node where nodes to be grouped into each other 
-        - [X] Generate cluster_id for each node source.
-    - [ ] Define super link where links to be grouped into each other
-    - [ ] Enable entity resolution for nodes
-    - [ ] Auto-generating source data 
+    - [X] Build messy->canon mapping ETL layer
+        - [X] Generate mapping table for messy node source.
+        - [ ] Do messy->canon convertion on the messy nodes
+            - [ ] Convert Node Table
+            - [ ] Convert Link Table
+    - [ ] Group Nodes After Canon Clean Up
+    - [ ] Entity Resolution on the all messy node. 
+        - [ ] Extract non-canon nodes 
+        - [ ] Do entity resolution on non-canon nodes
+        - [ ] Do non-canon->cluster_id convertion 
+            - [ ] Convert Node Table
+            - [ ] Convert Link Table
+    - [ ] ID validate on grouped links
