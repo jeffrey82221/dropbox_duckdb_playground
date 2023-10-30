@@ -5,9 +5,9 @@ TODO:
 - [ ] Build Threshold Tunner
 - [X] Build Learning ETL
 - [X] Build Mapping Table ETL
-- [ ] Get mapping 1 ( messy node -> canon node )
+- [X] Get mapping 1 ( messy node -> canon node )
 - [ ] Get remain messy node 
-- [ ] Get mapping 2 ( messy node -> cluster id)
+- [X] Get mapping 2 ( messy node -> cluster id)
 - [ ] Combine mapping 1 & mapping 2
 - [ ] Do mapping ( messy node -> canon / cluster node )
 - [ ] Build merging layer
