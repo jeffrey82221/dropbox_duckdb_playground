@@ -9,7 +9,9 @@ from .meta import ERMeta
 __all__ = ['ERBase', 'Messy2Canon', 'MessyOnly']
 
 class ERBase(DFProcessor):
-    """Base class for building NodeMappingLearner & NodeMappingProducer
+    """
+    Base class for building 
+    NodeMappingLearner & NodeMappingProducer
     """
     def __init__(self, meta: ERMeta, input_storage: PandasStorage, output_storage: JsonStorage, model_fs: FileSystem):
         self._meta = meta
@@ -50,7 +52,7 @@ class ERBase(DFProcessor):
 
     @property
     def mapper_file_name(self):
-        return f'{self.label}.mapper'
+        return f'mapper_{self.label}'
 
     @abc.abstractproperty
     def label(self):

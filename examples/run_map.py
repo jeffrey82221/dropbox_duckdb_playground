@@ -6,21 +6,22 @@ TODO:
 - [X] Build Learning ETL
 - [X] Build Mapping Table ETL
 - [X] Get mapping 1 ( messy node -> canon node )
-- [ ] Get remain messy node 
 - [X] Get mapping 2 ( messy node -> cluster id)
-- [ ] Combine mapping 1 & mapping 2
-- [ ] Do mapping ( messy node -> canon / cluster node )
+- [X] Combine mapping 1 & mapping 2
+- [X] Do mapping ( messy node -> canon / cluster node )
 - [ ] Build merging layer
 """
 from batch_framework.storage import PandasStorage, JsonStorage
 from batch_framework.filesystem import LocalBackend
+from batch_framework.rdb import DuckDBBackend
 from resolution import (
     ERMeta, 
     CanonMatchLearner, MessyMatchLearner, 
-    CanonMatcher, MessyMatcher
+    CanonMatcher, MessyMatcher, IDConvertor
 )
 
-input_fs = LocalBackend('./data/subgraph/output/')
+
+subgraph_fs = LocalBackend('./data/subgraph/output/')
 train_fs = LocalBackend('./data/train/')
 model_fs = LocalBackend('./data/model/')
 mapping_fs = LocalBackend('./data/mapping/')
@@ -46,30 +47,38 @@ meta = ERMeta(
         'before_marks': record['name']
     }
 )
-op1 = CanonMatchLearner(meta, 
-        PandasStorage(input_fs), 
+learner1 = CanonMatchLearner(meta, 
+        PandasStorage(subgraph_fs), 
         JsonStorage(train_fs),
         model_fs=model_fs
     )
-op2 = MessyMatchLearner(
+learner2 = MessyMatchLearner(
     meta, 
-    PandasStorage(input_fs), 
+    PandasStorage(subgraph_fs), 
     JsonStorage(train_fs),
     model_fs=model_fs
 )
-op3 = CanonMatcher(meta,
-    PandasStorage(input_fs), 
+canon_matcher = CanonMatcher(meta,
+    PandasStorage(subgraph_fs), 
     PandasStorage(mapping_fs),
     model_fs=model_fs,
     threshold=0.25
 )
-op4 = MessyMatcher(
+messy_matcher = MessyMatcher(
     meta,
-    PandasStorage(input_fs), 
+    PandasStorage(subgraph_fs), 
     PandasStorage(mapping_fs),
     model_fs=model_fs,
     threshold=0.5
 )
 
+converter = IDConvertor(meta, DuckDBBackend(), 
+            source_fs=subgraph_fs,
+            workspace_fs=mapping_fs,
+            target_fs=subgraph_fs
+            )
+
 if __name__ == '__main__':
-    op4.execute()
+    canon_matcher.execute()
+    messy_matcher.execute()
+    converter.execute()

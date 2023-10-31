@@ -2,10 +2,6 @@
 Extract Node Table using DUCKDB from filesystem
 """
 from batch_framework.etl import SQLExecutor
-from batch_framework.rdb import DuckDBBackend
-from batch_framework.filesystem import LocalBackend
-
-
 class NodeExtractor(SQLExecutor):
     @property
     def input_ids(self):
@@ -115,4 +111,3 @@ class NodeExtractor(SQLExecutor):
             AND url <> 'UNKNOWN'
             """
         }
-

@@ -2,9 +2,6 @@
 Extract Link Table using DUCKDB from filesystem
 """
 from batch_framework.etl import SQLExecutor
-from batch_framework.rdb import DuckDBBackend
-from batch_framework.filesystem import LocalBackend
-
 
 class LinkExtractor(SQLExecutor):
     @property
@@ -99,5 +96,3 @@ class LinkExtractor(SQLExecutor):
             AND url <> 'UNKNOWN'
             """
         }
-
-
