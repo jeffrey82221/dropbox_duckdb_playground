@@ -9,8 +9,10 @@ Experiment with new ETL architecture: using Dropbox as storage, Duckdb + Python 
         - execute method: run etl
         - input_ids / output_ids: a list of object ids to be recognized by `Storage`
     - `Storage` for upload and download python object from remote storage. 
-3. Build `Scheduler` class takes etl as input and connect etl instance, input_ids, output_ids with `paradag`.
-4. Using paradag to generate execution order and stetch the execution to Github Action.
+3. Build `ETLGroup` class takes etl as input and connect etl instance, input_ids, output_ids with `paradag`.
+4. Build `SchedulerAdaptor` class to generate YAML for Github Action
+and Airflow dag-factory (can build dag from yaml)
+    - ref: https://github.com/ajbosco/dag-factory
 5. Build a `Layer` class which can define layer-wise 
 ETL function and a `Platform` class in which allow `Layers` to be stacked.  logic. 
     - `Layer`: 

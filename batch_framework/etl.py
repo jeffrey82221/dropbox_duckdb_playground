@@ -15,6 +15,7 @@ Else:
     -> Run SQL in DuckDB
     -> Take output from DuckDB and save to output storage.
 """
+from paradag import DAG
 from typing import List, Dict, Optional
 import abc
 from .storage import Storage, PyArrowStorage
@@ -79,6 +80,19 @@ class ETL:
         """Execute ETL 
         """
         raise NotImplementedError
+
+    def build(self, dag: DAG):
+        # Step1: add execute to dag
+        dag.add_vertex(self.execute)
+        # Step2: connect input_id to execute
+        for input_id in self.input_ids:
+            dag.add_edge(input_id, self.execute)
+        # Step3: add all output_ids into dag
+        for output_id in self.output_ids:
+            dag.add_vertex(output_id)
+        # Step4: connect execute to ouput_id
+        for output_id in self.output_ids:
+            dag.add_edge(self.execute, output_id)
 
 class SQLExecutor(ETL):
     """Basic interface for SQL executor
