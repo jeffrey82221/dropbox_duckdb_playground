@@ -13,14 +13,6 @@ Experiment with new ETL architecture: using Dropbox as storage, Duckdb + Python 
 4. Build `SchedulerAdaptor` class to generate YAML for Github Action
 and Airflow dag-factory (can build dag from yaml)
     - ref: https://github.com/ajbosco/dag-factory
-5. Build a `Layer` class which can define layer-wise 
-ETL function and a `Platform` class in which allow `Layers` to be stacked.  logic. 
-    - `Layer`: 
-        - input_ids
-        - output_ids
-        - operations: a list of `ETL` class with inputs_ids and output_ids mapped to those of `Layer` object. (Should be same subclass)
-        - __init__: same args and kwargs setup as the `ETL` class in operations
-    - `Platform` Take multiple layers as input and connect the underlying `ETL` class to Scheduler
 # Future Plan: 
 
 1) Extend to various web sources

@@ -5,9 +5,9 @@ Convert pandas with JSON column to plain pandas dataframe
 from typing import List, Dict, Union
 import pandas as pd
 import numpy as np
-from batch_framework.etl import DFProcessor
+from batch_framework.etl import ObjProcessor
 
-class LatestTabularize(DFProcessor):
+class LatestTabularize(ObjProcessor):
     @property
     def input_ids(self):
         return ['latest']

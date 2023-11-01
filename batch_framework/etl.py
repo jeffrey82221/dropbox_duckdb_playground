@@ -2,7 +2,7 @@
 ETL Class
 TODO:
 - [X] Split SQL executor and Processor
-- [ ] Rename DFProcessor as Object Processor
+- [X] Rename DFProcessor as Object Processor
 """
 from paradag import DAG
 from paradag import dag_run
@@ -13,8 +13,9 @@ from .filesystem import FileSystem
 from .rdb import RDB
 
 __all__ = [
-    'DFProcessor',
-    'SQLExecutor'
+    'ObjProcessor',
+    'SQLExecutor',
+    'ETLGroup'
 ]
 class ETL:
     """
@@ -175,9 +176,9 @@ class SQLExecutor(ETL):
                 table = self._rdb.execute(f'SELECT * FROM {id}').arrow()
                 self._output_storage.upload(table, id)
 
-class DFProcessor(ETL):
+class ObjProcessor(ETL):
     """
-    Basic Interface for defining a dataframe processing unit of ETL flow.
+    Basic Interface for defining an object processing unit of ETL flow.
     """
     def __init__(self, input_storage: Storage, output_storage: Optional[Storage]=None, feedback_ids: List[str]=[]):
         self._input_storage = input_storage

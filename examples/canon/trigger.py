@@ -5,11 +5,11 @@ from typing import List
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-from batch_framework.etl import DFProcessor
+from batch_framework.etl import ObjProcessor
 
 URL = "https://pypi.python.org/simple/"
 
-class PyPiNameTrigger(DFProcessor):
+class PyPiNameTrigger(ObjProcessor):
     @property
     def input_ids(self):
         return []

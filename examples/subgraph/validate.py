@@ -3,10 +3,10 @@ Validate ID(s) of a Subgraph
 """
 from typing import List
 import pandas as pd
-from batch_framework.etl import DFProcessor
+from batch_framework.etl import ObjProcessor
 from batch_framework.storage import PandasStorage
 
-class IDValidator(DFProcessor):
+class IDValidator(ObjProcessor):
     def __init__(self, link: str, src_node: str, target_node: str, input_storage: PandasStorage):
         self._link = link
         self._src_node = src_node

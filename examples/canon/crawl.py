@@ -7,10 +7,10 @@ TODO:
 from typing import List, Dict, Tuple, Optional
 import requests
 import pandas as pd
-from batch_framework.etl import DFProcessor
+from batch_framework.etl import ObjProcessor
 from batch_framework.storage import PandasStorage
 from tqdm import tqdm
-class LatestCrawler(DFProcessor):
+class LatestCrawler(ObjProcessor):
     def __init__(self, input_storage: PandasStorage, test_count: Optional[int]=None):
         super().__init__(input_storage=input_storage, feedback_ids=['latest'])
         self._test_count = test_count

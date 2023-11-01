@@ -5,7 +5,7 @@ TODO:
 """
 
 import pytest
-from batch_framework.etl import DFProcessor
+from batch_framework.etl import ObjProcessor
 from typing import List
 import pandas as pd
 import vaex as vx
@@ -14,7 +14,7 @@ from batch_framework.filesystem import LocalBackend
 from batch_framework.storage import PandasStorage, VaexStorage
 
 
-class PDOperator(DFProcessor):        
+class PDOperator(ObjProcessor):        
     @property
     def input_ids(self):
         return [
@@ -32,7 +32,7 @@ class PDOperator(DFProcessor):
         return [inputs[0] + inputs[1]]
 
 
-class VXOperator(DFProcessor):
+class VXOperator(ObjProcessor):
     @property
     def input_ids(self):
         return [

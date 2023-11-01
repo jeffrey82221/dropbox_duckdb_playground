@@ -1,14 +1,14 @@
 import abc
 from typing import Dict
 import pandas as pd
-from batch_framework.etl import DFProcessor
+from batch_framework.etl import ObjProcessor
 from batch_framework.storage import PandasStorage, JsonStorage
 from batch_framework.filesystem import FileSystem
 from .meta import ERMeta
 
 __all__ = ['ERBase', 'Messy2Canon', 'MessyOnly']
 
-class ERBase(DFProcessor):
+class ERBase(ObjProcessor):
     """
     Base class for building 
     NodeMappingLearner & NodeMappingProducer
