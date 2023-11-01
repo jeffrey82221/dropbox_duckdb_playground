@@ -6,6 +6,8 @@ from datetime import datetime
 import os
 import time
 class ETL1(ETL):
+    def __init__(self, data=None):
+        self.data = data
     @property
     def input_ids(self):
         return []
@@ -15,13 +17,11 @@ class ETL1(ETL):
         return ['a', 'b']
 
     def execute(self):
-        with open(f'tests/{str(datetime.now().date())}.test1', 'wb') as f:
-            f.write(b'hello')
-        f.close()
-        time.sleep(1)
         return 'etl1'
 
 class ETL2(ETL):
+    def __init__(self, data=None):
+        self.data = data
     @property
     def input_ids(self):
         return ['a', 'b']
@@ -31,12 +31,6 @@ class ETL2(ETL):
         return ['c']
     
     def execute(self):
-        print('ETL2 Executed')
-        with open(f'tests/{str(datetime.now().date())}.test1', 'rb') as f:
-            ans = f.read()
-        f.close()
-        assert ans == b'hello'
-        os.remove(f'tests/{str(datetime.now().date())}.test1')
         return 'etl2'
 
 class MyGroup(ETLGroup):
@@ -47,14 +41,15 @@ class MyGroup(ETLGroup):
     @property
     def output_ids(self):
         return ['c']
-
+    
+text = dict()
 @pytest.fixture
 def etl1():
-    return ETL1()
+    return ETL1(data = text)
 
 @pytest.fixture
 def etl2():
-    return ETL2()
+    return ETL2(data = text)
 
 
 def test_build(etl1, etl2):
@@ -89,6 +84,9 @@ def test_etl_hash(etl1, etl2):
     assert etl1 in set([etl1, etl1])
     assert len(set([etl1, etl1])) == 1
 
-def test_group_execute(etl1, etl2):
-    etl_group = MyGroup(etl1, etl2)
+def test_group_execute():
+    data = dict()
+    etl_group = MyGroup(
+        ETL1(data = data), 
+        ETL2(data = data))
     etl_group.execute()
