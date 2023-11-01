@@ -1,21 +1,11 @@
 """
+ETL Class
 TODO:
-- [ ] Split SQL executor and Processor
+- [X] Split SQL executor and Processor
 - [ ] Rename DFProcessor as Object Processor
-SQL Process
-NOTE:
-How to process with SQL?
-If: input_storage and output_storage are the storage and all using the same RDB backend.
-    -> Run SQL on the same RDB. Use Jinja to stitch input_id, output_id, and select sql together.
-Else If: input_storage is RDB and output_storage is not the same storage.
-    -> Run SQL on the input_storage RDB. Use Jinja to stitch input_id, and select sql.
-    -> Extract the result of SQL as python object supported by output_storage and save them into output_storage.
-Else:
-    -> Extract input tables as save them into DuckDB
-    -> Run SQL in DuckDB
-    -> Take output from DuckDB and save to output storage.
 """
 from paradag import DAG
+from paradag import dag_run
 from typing import List, Dict, Optional
 import abc
 from .storage import Storage, PyArrowStorage
@@ -82,17 +72,56 @@ class ETL:
         raise NotImplementedError
 
     def build(self, dag: DAG):
+        """Connecting input_ids, output_ids and execution method
+        as nodes into dag.
+        """
         # Step1: add execute to dag
-        dag.add_vertex(self.execute)
+        dag.add_vertex(self)
         # Step2: connect input_id to execute
         for input_id in self.input_ids:
-            dag.add_edge(input_id, self.execute)
+            dag.add_edge(input_id, self)
         # Step3: add all output_ids into dag
         for output_id in self.output_ids:
             dag.add_vertex(output_id)
         # Step4: connect execute to ouput_id
         for output_id in self.output_ids:
-            dag.add_edge(self.execute, output_id)
+            dag.add_edge(self, output_id)
+
+class DagExecutor:
+    def param(self, vertex):
+        return vertex
+
+    def execute(self, param):
+        if isinstance(param, str):
+            print(f'Passing Object: {param}')
+        elif isinstance(param, ETL):
+            print('Start Executing', type(param), param)
+            param.execute()
+        else:
+            raise TypeError
+
+class ETLGroup(ETL):
+    """Interface for connecting multiple ETL units
+    """
+    def __init__(self, *etl_units: List[ETL]):
+        self.etl_units = etl_units
+    
+    def _execute(self, **kwargs):
+        """Execute ETL units
+        """
+        from paradag import SequentialProcessor
+        
+        dag = DAG()
+        self.build(dag)
+        dag_run(dag, processor=SequentialProcessor(), 
+                executor=DagExecutor()
+        )
+
+    def build(self, dag: DAG):
+        for etl_unit in self.etl_units:
+            etl_unit.build(dag)
+        for _id in self.output_ids:
+            assert _id in dag.vertices(), f'output_id {_id} is not in dag input vertices'
 
 class SQLExecutor(ETL):
     """Basic interface for SQL executor
