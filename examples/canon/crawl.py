@@ -2,18 +2,25 @@
 """
 Download Latest Json for all package on PyPi
 TODO:
-- [ ] Try to devide and conquer the download for speed up the process. 
+- [X] Try to devide and conquer the download for speed up the process. 
+    - [X] Add `name_trigger` partitioning task between `trigger` and `crawl`
+    - [X] Add partition_id selection to `crawl`
+    - [X] Add `latest` merge task between crawl and tabularize 
 """
 from typing import List, Dict, Tuple, Optional
 import requests
+import threading
 import pandas as pd
 from batch_framework.etl import ObjProcessor
 from batch_framework.storage import PandasStorage
-from tqdm import tqdm
+
+lock = threading.Lock()
 class LatestCrawler(ObjProcessor):
-    def __init__(self, input_storage: PandasStorage, test_count: Optional[int]=None):
-        super().__init__(input_storage=input_storage, feedback_ids=['latest'])
+    def __init__(self, input_storage: PandasStorage, test_count: Optional[int]=None, partition_id: Optional[int]=None):
+        self._partition_id = partition_id
+        super().__init__(input_storage=input_storage)
         self._test_count = test_count
+        
 
     def start(self, **kwargs):
         if not self._input_storage._backend.check_exists('latest'):
@@ -22,26 +29,49 @@ class LatestCrawler(ObjProcessor):
 
     @property
     def input_ids(self):
-        return ['name_trigger']
+        if self._partition_id is not None:
+            return [f'name_trigger.{self._partition_id}']
+        else:
+            return ['name_trigger']
 
     @property
     def output_ids(self):
-        return ['latest']
+        if self._partition_id is not None:
+            return [f'latest.{self._partition_id}']
+        else:
+            return ['latest']
     
+    def _extract_feedback(self) -> Dict[str, object]:
+        """extract table from output to feedback to transform method
+
+        Returns:
+            Dict[str, object]: contains dataframe object to be passed to `transform` in
+            **kwargs
+                - key: The feedback output id
+                - value: The downloaded dataframe object
+        """
+        print(f'Start extract feedback object {self._partition_id}')
+        _feedback_ids = ['latest']
+        with lock:
+            output_tables = [(id, self._output_storage.download(id)) for id in _feedback_ids]
+        assert all([isinstance(obj, self.get_input_type()) for id, obj in output_tables]), f'One of the input_obj is not {self.get_input_type()}'
+        return dict(output_tables)
+        
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
         latest_df = kwargs['latest']
         pkg_name_df = inputs[0]
-        print('Package Name Count:', len(pkg_name_df))
-        print('Latest Count:', len(latest_df))
+        latest_df = latest_df.merge(pkg_name_df[['name']], on='name', how='inner')
+        print(f'Package Name Count ({self._partition_id}):', len(pkg_name_df))
+        print(f'Latest Count ({self._partition_id}):', len(latest_df))
         new_pkg_names = self._get_new_package_names(pkg_name_df, latest_df)
         new_df = self._get_new_package_records(new_pkg_names)
-        print('New Packages Count:', len(new_df))
+        print(f'New Packages Count ({self._partition_id}):', len(new_df))
         update_df = self._get_updated_package_records(latest_df)
-        print('Updated Packages Count:', len(update_df))
+        print(f'Updated Packages Count ({self._partition_id}):', len(update_df))
         result_df = pd.concat([new_df, update_df, latest_df], ignore_index=True)
-        print('Total Output Package Count Before Drop Duplicate:', len(result_df))
+        print(f'Total Output Package Count Before Drop Duplicate ({self._partition_id}):', len(result_df))
         result_df.drop_duplicates(subset=['name'], keep='first', inplace=True)
-        print('Total Output Package Count:', len(result_df))
+        print(f'Total Output Package Count ({self._partition_id}):', len(result_df))
         return [result_df]
 
     def _get_new_package_names(self, pkg_name_df: pd.DataFrame, latest_df: pd.DataFrame) -> List[str]:
@@ -67,12 +97,12 @@ class LatestCrawler(ObjProcessor):
             url = f"https://pypi.org/pypi/{name}/json"
             res = requests.get(url)
             if res.status_code == 404:
-                print(f'[_get_new_package_records] {name} latest skipped due to 404')
+                print(f'[_get_new_package_records] ({self._partition_id}) {name} latest skipped due to 404')
                 continue
             assert res.status_code == 200, f'response status code is {res.status_code}'
             latest = res.json()
             etag = res.headers["ETag"]
-            print(f'[_get_new_package_records] {i+1}/{len(names)} {name} latest downloaded.')
+            print(f'[_get_new_package_records] ({self._partition_id}) {i+1}/{len(names)} {name} latest downloaded.')
             results.append((name, latest, etag))
         return pd.DataFrame.from_records(results, columns=['name', 'latest', 'etag'])
 
@@ -90,12 +120,12 @@ class LatestCrawler(ObjProcessor):
         total = len(latest_df)
         for i, (name, etag) in enumerate(zip(latest_df.name.tolist(), latest_df.etag.tolist())):
             result = self._update_with_etag(name, etag)
-            if result is not None:
+            if not isinstance(result, str):
                 latest, etag = result
                 results.append((name, latest, etag))
-                print(f'[_get_updated_package_records] {i+1}/{total} {name} Download')
+                print(f'[_get_updated_package_records] ({self._partition_id}) {i+1}/{total} {name} Download')
             else:
-                print(f'[_get_updated_package_records] {i}/{total} {name} Skipped')
+                print(f'[_get_updated_package_records] ({self._partition_id}) {i}/{total} {name} skipped due to {result}')
         return pd.DataFrame.from_records(results, columns=['name', 'latest', 'etag'])
     
     def _update_with_etag(self, name: str, etag: str) -> Optional[Tuple[Dict, str]]:
@@ -115,11 +145,11 @@ class LatestCrawler(ObjProcessor):
         url = f"https://pypi.org/pypi/{name}/json"
         res = requests.get(url, headers={"If-None-Match": etag})
         if res.status_code == 404:
-            return None
+            return '404'
         assert res.status_code in [200, 304], f'response status code is {res.status_code}'
         if res.status_code == 200:
             latest = res.json()
             etag = res.headers["ETag"]
             return latest, etag
         else:
-            return None
+            return '304'
