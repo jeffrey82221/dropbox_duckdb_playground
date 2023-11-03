@@ -6,6 +6,7 @@ TODO:
 """
 from paradag import DAG
 from paradag import dag_run
+from paradag import MultiThreadProcessor
 from typing import List, Dict, Optional
 import abc
 from .storage import Storage, PyArrowStorage
@@ -96,8 +97,9 @@ class DagExecutor:
         if isinstance(param, str):
             print(f'Passing Object: {param}')
         elif isinstance(param, ETL):
-            print('Start Executing', type(param), param)
+            print('Run:', type(param), 'inputs:', param.input_ids, 'outputs:', param.output_ids)
             param.execute()
+            print('End:', type(param), 'inputs:', param.input_ids, 'outputs:', param.output_ids)
         else:
             raise TypeError
 
@@ -110,11 +112,9 @@ class ETLGroup(ETL):
     def _execute(self, **kwargs):
         """Execute ETL units
         """
-        from paradag import SequentialProcessor
-        
         dag = DAG()
         self.build(dag)
-        dag_run(dag, processor=SequentialProcessor(), 
+        dag_run(dag, processor=MultiThreadProcessor(), 
                 executor=DagExecutor()
         )
 
