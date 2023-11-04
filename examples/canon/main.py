@@ -4,20 +4,29 @@ from batch_framework.storage import PandasStorage
 from batch_framework.etl import ETLGroup
 import os
 from .trigger import PyPiNameTrigger
-from .crawl import LatestCrawler
+from .crawl import (
+    LatestFeedback,
+    NewPackageExtractor,
+    LatestDownloader,
+    LatestUpdator,
+    Combine
+)
 from .tabularize import LatestTabularize
 from .map_reduce import PandasDivide, PandasMerge
 
 class SimplePyPiCanonicalize(ETLGroup):
     def __init__(self, tmp_fs: LocalBackend, output_fs: LocalBackend, test_count: Optional[int]=None):
         self._tmp_fs = tmp_fs
+        tmp_s = PandasStorage(tmp_fs)
         units = [
-            PyPiNameTrigger(PandasStorage(tmp_fs))
-        ] + [
-            LatestCrawler(PandasStorage(tmp_fs), test_count=test_count) 
-        ] + [
+            LatestFeedback(tmp_s),
+            LatestUpdator(tmp_s),
+            PyPiNameTrigger(tmp_s),
+            NewPackageExtractor(tmp_s, test_count=test_count),
+            LatestDownloader(tmp_s),
+            Combine(tmp_s),
             LatestTabularize(
-                input_storage=PandasStorage(tmp_fs), 
+                input_storage=tmp_s, 
                 output_storage=PandasStorage(output_fs)
             )
         ]
