@@ -1,3 +1,3 @@
-from .main import PyPiCanonicalize
+from .main import PyPiCanonicalize, SimplePyPiCanonicalize
 
-__all__ = ['PyPiCanonicalize']
+__all__ = ['PyPiCanonicalize', 'SimplePyPiCanonicalize']

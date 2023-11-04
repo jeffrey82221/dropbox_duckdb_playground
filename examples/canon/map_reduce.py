@@ -1,3 +1,9 @@
+"""Divide and conquer module 
+TODO:
+    - [ ] making this a class decorator
+"""
+
+
 from typing import List
 import pandas as pd
 import numpy as np

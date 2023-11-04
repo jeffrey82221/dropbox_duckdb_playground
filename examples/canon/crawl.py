@@ -21,25 +21,25 @@ from batch_framework.storage import PandasStorage
 class LatestCrawler(ObjProcessor):
     def __init__(self, input_storage: PandasStorage, test_count: Optional[int]=None, partition_id: Optional[int]=None):
         self._partition_id = partition_id
-        if self._partition_id is None:
-            feedback_ids = ['latest']
-        else:
-            feedback_ids = []
-        super().__init__(input_storage=input_storage, feedback_ids=feedback_ids)
+        super().__init__(input_storage=input_storage)
         self._test_count = test_count
 
     def start(self, **kwargs):
-        if not self._input_storage._backend.check_exists('latest'):
+        if not self._input_storage._backend.check_exists('latest_feedback'):
             latest_df = pd.DataFrame.from_records([], columns=['name', 'latest', 'etag'])
-            self._input_storage.upload(latest_df, 'latest')
+            self._input_storage.upload(latest_df, 'latest_feedback')
 
     @property
     def input_ids(self):
         if self._partition_id is not None:
-            return [f'name_trigger.{self._partition_id}']
+            return [f'name_trigger.{self._partition_id}', 'latest_feedback']
         else:
-            return ['name_trigger']
+            return ['name_trigger', 'latest_feedback']
 
+    @property
+    def external_input_ids(self) -> List[str]:
+        return ['latest_feedback']
+    
     @property
     def output_ids(self):
         if self._partition_id is not None:
@@ -48,9 +48,9 @@ class LatestCrawler(ObjProcessor):
             return ['latest']
         
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
-        if 'latest' in kwargs:
-            latest_df = kwargs['latest']
+        if len(inputs) == 2:
             pkg_name_df = inputs[0]
+            latest_df = inputs[1]
             print(f'Package Name Count ({self._partition_id}):', len(pkg_name_df))
             new_pkg_names = self._get_new_package_names(pkg_name_df, latest_df)
             new_df = self._get_new_package_records(new_pkg_names)

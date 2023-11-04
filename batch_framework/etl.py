@@ -3,6 +3,7 @@ ETL Class
 TODO:
 - [X] Split SQL executor and Processor
 - [X] Rename DFProcessor as Object Processor
+- [ ] Add multi-threading to SQLExecutor
 """
 from paradag import DAG
 from paradag import dag_run
@@ -28,6 +29,7 @@ class ETL:
         assert len(set(self.input_ids) & set(self.output_ids)) == 0, 'There should not be an object_id on both input_ids and output_ids'
         assert len(self.input_ids) == len(set(self.input_ids)), 'There should no be repeated id in self.input_ids'
         assert len(self.output_ids) == len(set(self.output_ids)), 'There should no be repeated id in self.output_ids'
+        assert all([id in self.input_ids for id in self.external_input_ids]), 'all external input ids should be one of the input ids'
 
     @abc.abstractproperty
     def input_ids(self) -> List[str]:
@@ -36,6 +38,12 @@ class ETL:
             List[str]: a list of input object ids
         """
         raise NotImplementedError
+
+    @abc.abstractproperty
+    def external_input_ids(self) -> List[str]:
+        """Input from the external
+        """
+        return []
 
     @abc.abstractproperty
     def output_ids(self) -> List[str]:
@@ -77,6 +85,9 @@ class ETL:
         """Connecting input_ids, output_ids and execution method
         as nodes into dag.
         """
+        # Step0: add external input_ids to dag
+        for id in self.external_input_ids:
+            dag.add_vertex(id)
         # Step1: add execute to dag
         dag.add_vertex(self)
         # Step2: connect input_id to execute
@@ -119,8 +130,13 @@ class ETLGroup(ETL):
         )
 
     def build(self, dag: DAG):
+        # Step0: add external input_ids to dag
+        for id in self.external_input_ids:
+            dag.add_vertex(id)
+        # Step1: connecting dag with all etl units
         for etl_unit in self.etl_units:
             etl_unit.build(dag)
+        # Step2: make sure all output ids are already in the dag
         for _id in self.output_ids:
             assert _id in dag.vertices(), f'output_id {_id} is not in dag input vertices'
 
@@ -188,9 +204,6 @@ class ObjProcessor(ETL):
             self._output_storage = output_storage
         assert isinstance(self._input_storage, Storage), f'input_storage should be Storage rather than: {type(self._input_storage)}'
         assert isinstance(self._output_storage, Storage), f'output_storage should be Storage rather than: {type(self._output_storage)}'
-        for id in feedback_ids:
-            assert id in self.output_ids, f'Each of feedback_ids should be one of output_ids, but {id} is not'
-        self._feedback_ids = feedback_ids
         super().__init__()
 
     @abc.abstractmethod
@@ -215,10 +228,6 @@ class ObjProcessor(ETL):
             input_objs = self._extract_inputs()
         else:
             input_objs = []
-        # Extract outputs and load into kwargs
-        feedback_objs = self._extract_feedback()
-        # Output Post-Validation
-        kwargs.update(feedback_objs)
         # Transformation Step
         output_objs = self.transform(input_objs, **kwargs)
         # Output Validation
@@ -245,23 +254,6 @@ class ObjProcessor(ETL):
         assert all([isinstance(obj, self.get_input_type()) for obj in input_tables]
                     ), f'One of the input_obj is not {self.get_input_type()}'
         return input_tables
-
-    def _extract_feedback(self) -> Dict[str, object]:
-        """extract table from output to feedback to transform method
-
-        Returns:
-            Dict[str, object]: contains dataframe object to be passed to `transform` in
-            **kwargs
-                - key: The feedback output id
-                - value: The downloaded dataframe object
-        """
-        if len(self._feedback_ids):
-            output_tables = [(id, self._output_storage.download(id)) for id in self._feedback_ids]
-            assert all([isinstance(obj, self.get_input_type()) for id, obj in output_tables]
-                        ), f'One of the input_obj is not {self.get_input_type()}'
-            return dict(output_tables)
-        else:
-            return dict()
 
     def _load(self, output_tables: List[object]):
         """
