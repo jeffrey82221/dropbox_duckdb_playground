@@ -1,6 +1,7 @@
 from batch_framework.filesystem import LocalBackend
 from batch_framework.storage import PandasStorage
 from batch_framework.etl import ETLGroup
+import os
 from .trigger import PyPiNameTrigger
 from .crawl import LatestCrawler
 from .tabularize import LatestTabularize
@@ -10,6 +11,7 @@ class PyPiCanonicalize(ETLGroup):
     """Make Data Crawled from PyPi Tabularized
     """
     def __init__(self, tmp_fs: LocalBackend, output_fs: LocalBackend, parallel_cnt = 50, test_count=None):
+        self._tmp_fs = tmp_fs
         units = [
             PyPiNameTrigger(PandasStorage(tmp_fs)),
             PandasDivide('name_trigger', parallel_cnt, PandasStorage(tmp_fs))
@@ -33,6 +35,10 @@ class PyPiCanonicalize(ETLGroup):
     def output_ids(self):
         return ['latest_package', 'latest_requirement', 'latest_url']
 
+    def end(self):
+        os.remove(f'{self._input_storage._directory}name_trigger.*')
+        os.remove(f'{self._input_storage._directory}latest.*')
+        print('Drop partition files')
 
 if __name__ == '__main__':
     tmp_fs = LocalBackend('./data/canon/tmp/')

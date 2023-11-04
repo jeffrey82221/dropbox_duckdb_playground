@@ -6,21 +6,27 @@ TODO:
     - [X] Add `name_trigger` partitioning task between `trigger` and `crawl`
     - [X] Add partition_id selection to `crawl`
     - [X] Add `latest` merge task between crawl and tabularize 
+- [ ] Decompose Crawl into 
+    - [ ] Get new package names 
+    - [ ] Download new package records -> Decorate with MapReduce 
+    - [ ] Update package records -> Decorate with MapReduce
+    - [ ] Combine package records 
 """
 from typing import List, Dict, Tuple, Optional
 import requests
-import threading
 import pandas as pd
 from batch_framework.etl import ObjProcessor
 from batch_framework.storage import PandasStorage
 
-lock = threading.Lock()
 class LatestCrawler(ObjProcessor):
     def __init__(self, input_storage: PandasStorage, test_count: Optional[int]=None, partition_id: Optional[int]=None):
         self._partition_id = partition_id
-        super().__init__(input_storage=input_storage)
+        if self._partition_id is None:
+            feedback_ids = ['latest']
+        else:
+            feedback_ids = []
+        super().__init__(input_storage=input_storage, feedback_ids=feedback_ids)
         self._test_count = test_count
-        
 
     def start(self, **kwargs):
         if not self._input_storage._backend.check_exists('latest'):
@@ -40,39 +46,29 @@ class LatestCrawler(ObjProcessor):
             return [f'latest.{self._partition_id}']
         else:
             return ['latest']
-    
-    def _extract_feedback(self) -> Dict[str, object]:
-        """extract table from output to feedback to transform method
-
-        Returns:
-            Dict[str, object]: contains dataframe object to be passed to `transform` in
-            **kwargs
-                - key: The feedback output id
-                - value: The downloaded dataframe object
-        """
-        print(f'Start extract feedback object {self._partition_id}')
-        _feedback_ids = ['latest']
-        with lock:
-            output_tables = [(id, self._output_storage.download(id)) for id in _feedback_ids]
-        assert all([isinstance(obj, self.get_input_type()) for id, obj in output_tables]), f'One of the input_obj is not {self.get_input_type()}'
-        return dict(output_tables)
         
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
-        latest_df = kwargs['latest']
-        pkg_name_df = inputs[0]
-        latest_df = latest_df.merge(pkg_name_df[['name']], on='name', how='inner')
-        print(f'Package Name Count ({self._partition_id}):', len(pkg_name_df))
-        print(f'Latest Count ({self._partition_id}):', len(latest_df))
-        new_pkg_names = self._get_new_package_names(pkg_name_df, latest_df)
-        new_df = self._get_new_package_records(new_pkg_names)
-        print(f'New Packages Count ({self._partition_id}):', len(new_df))
-        update_df = self._get_updated_package_records(latest_df)
-        print(f'Updated Packages Count ({self._partition_id}):', len(update_df))
-        result_df = pd.concat([new_df, update_df, latest_df], ignore_index=True)
-        print(f'Total Output Package Count Before Drop Duplicate ({self._partition_id}):', len(result_df))
-        result_df.drop_duplicates(subset=['name'], keep='first', inplace=True)
-        print(f'Total Output Package Count ({self._partition_id}):', len(result_df))
-        return [result_df]
+        if 'latest' in kwargs:
+            latest_df = kwargs['latest']
+            pkg_name_df = inputs[0]
+            print(f'Package Name Count ({self._partition_id}):', len(pkg_name_df))
+            new_pkg_names = self._get_new_package_names(pkg_name_df, latest_df)
+            new_df = self._get_new_package_records(new_pkg_names)
+            print(f'New Packages Count ({self._partition_id}):', len(new_df))
+            update_df = self._get_updated_package_records(latest_df)
+            print(f'Updated Packages Count ({self._partition_id}):', len(update_df))
+            result_df = pd.concat([new_df, update_df, latest_df], ignore_index=True)
+            print(f'Total Output Package Count Before Drop Duplicate ({self._partition_id}):', len(result_df))
+            result_df.drop_duplicates(subset=['name'], keep='first', inplace=True)
+            print(f'Total Output Package Count ({self._partition_id}):', len(result_df))
+            return [result_df]
+        else:
+            pkg_name_df = inputs[0]
+            print(f'Package Name Count ({self._partition_id}):', len(pkg_name_df))
+            new_pkg_names = pkg_name_df.name.tolist()
+            new_df = self._get_new_package_records(new_pkg_names)
+            print(f'New Packages Count ({self._partition_id}):', len(new_df))
+            return [new_df]
 
     def _get_new_package_names(self, pkg_name_df: pd.DataFrame, latest_df: pd.DataFrame) -> List[str]:
         new_names = list(set(pkg_name_df.name) - set(latest_df.name))
