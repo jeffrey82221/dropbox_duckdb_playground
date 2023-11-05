@@ -1,6 +1,6 @@
 from typing import Optional
 from batch_framework.filesystem import LocalBackend
-from batch_framework.storage import PandasStorage
+from batch_framework.storage import PandasStorage, VaexStorage
 from batch_framework.etl import ETLGroup
 import os
 from .trigger import PyPiNameTrigger
@@ -11,26 +11,32 @@ from .crawl import (
     LatestUpdator,
     Combine
 )
+from .parallize import MapReduce
 from .tabularize import LatestTabularize
-from .map_reduce import PandasDivide, PandasMerge
 
 class SimplePyPiCanonicalize(ETLGroup):
-    def __init__(self, tmp_fs: LocalBackend, output_fs: LocalBackend, test_count: Optional[int]=None):
+    def __init__(self, raw_df: LocalBackend, tmp_fs: LocalBackend, output_fs: LocalBackend, partition_fs: LocalBackend, parallel_count: int, test_count: Optional[int]=None):
         self._tmp_fs = tmp_fs
         tmp_s = PandasStorage(tmp_fs)
         units = [
-            LatestFeedback(tmp_s),
-            LatestUpdator(tmp_s),
+            # Crawl Start
+            LatestFeedback(input_storage=VaexStorage(raw_df), output_storage=VaexStorage(tmp_fs)),
             PyPiNameTrigger(tmp_s),
-            NewPackageExtractor(tmp_s, test_count=test_count),
-            LatestDownloader(tmp_s),
-            Combine(tmp_s),
+            NewPackageExtractor(VaexStorage(tmp_fs), test_count=test_count),
+            MapReduce(LatestDownloader(tmp_s), parallel_count, PandasStorage(partition_fs)),
+            MapReduce(LatestUpdator(tmp_s), parallel_count, PandasStorage(partition_fs)),
+            Combine(input_storage=tmp_s, output_storage=PandasStorage(raw_df)),
+            # Crawl End
             LatestTabularize(
-                input_storage=tmp_s, 
+                input_storage=PandasStorage(raw_df), 
                 output_storage=PandasStorage(output_fs)
             )
         ]
         super().__init__(*units)
+    
+    @property
+    def input_ids(self):
+        return []
     
     @property
     def output_ids(self):

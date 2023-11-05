@@ -54,7 +54,7 @@ class LatestTabularize(ObjProcessor):
             'requires_python': record['latest']['info']['requires_python'],
             'version': record['latest']['info']['version'],
             'keywords': record['latest']['info']['keywords'],
-            'num_releases': len(record['latest']['releases']),
+            'num_releases': record['latest']['info']['num_releases'],
             'author': record['latest']['info']['author'],
             'author_email': record['latest']['info']['author_email'],
             'maintainer': record['latest']['info']['maintainer'],
