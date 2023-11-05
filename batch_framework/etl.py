@@ -24,12 +24,11 @@ class ETL:
     Basic Interface for defining a unit of ETL flow.
     """
     def __init__(self):
-        assert isinstance(self.input_ids, list), 'def input_ids should be a property returning a list of str'
-        assert isinstance(self.output_ids, list), 'def output_ids should be a property returning a list of str'
+        assert isinstance(self.input_ids, list), f'def input_ids is not a list of string but {self.input_ids} on {self}'
+        assert isinstance(self.output_ids, list), f'def output_ids is not a list of string but {self.output_ids} on {self}'
         assert len(set(self.input_ids) & set(self.output_ids)) == 0, 'There should not be an object_id on both input_ids and output_ids'
         assert len(self.input_ids) == len(set(self.input_ids)), 'There should no be repeated id in self.input_ids'
         assert len(self.output_ids) == len(set(self.output_ids)), 'There should no be repeated id in self.output_ids'
-        assert all([id in self.input_ids for id in self.external_input_ids]), 'all external input ids should be one of the input ids'
 
     @abc.abstractproperty
     def input_ids(self) -> List[str]:
@@ -38,12 +37,6 @@ class ETL:
             List[str]: a list of input object ids
         """
         raise NotImplementedError
-
-    @abc.abstractproperty
-    def external_input_ids(self) -> List[str]:
-        """Input from the external
-        """
-        return []
 
     @abc.abstractproperty
     def output_ids(self) -> List[str]:
@@ -85,9 +78,6 @@ class ETL:
         """Connecting input_ids, output_ids and execution method
         as nodes into dag.
         """
-        # Step0: add external input_ids to dag
-        for id in self.external_input_ids:
-            dag.add_vertex(id)
         # Step1: add execute to dag
         dag.add_vertex(self)
         # Step2: connect input_id to execute
@@ -106,11 +96,15 @@ class DagExecutor:
 
     def execute(self, param):
         if isinstance(param, str):
-            print(f'Passing Object: {param}')
+            print(f'@Passing Object: {param}')
         elif isinstance(param, ETL):
-            print('Run:', type(param), 'inputs:', param.input_ids, 'outputs:', param.output_ids)
+            print('@Start:', type(param), 'inputs:', param.input_ids, 'outputs:', param.output_ids)
             param.execute()
-            print('End:', type(param), 'inputs:', param.input_ids, 'outputs:', param.output_ids)
+            print('@End:', type(param), 'inputs:', param.input_ids, 'outputs:', param.output_ids)
+        elif callable(param):
+            print('@Start:', param, 'of', type(param))
+            param()
+            print('@End:', param, 'of', type(param))
         else:
             raise TypeError
 
@@ -130,15 +124,22 @@ class ETLGroup(ETL):
         )
 
     def build(self, dag: DAG):
-        # Step0: add external input_ids to dag
-        for id in self.external_input_ids:
-            dag.add_vertex(id)
         # Step1: connecting dag with all etl units
         for etl_unit in self.etl_units:
             etl_unit.build(dag)
         # Step2: make sure all output ids are already in the dag
         for _id in self.output_ids:
             assert _id in dag.vertices(), f'output_id {_id} is not in dag input vertices'
+        # Step3: Add start and end to dag
+        dag.add_vertex(self.start)
+        dag.add_vertex(self.end)
+        # Step4: Connect end to all output_ids
+        for id in self.input_ids:
+            dag.add_edge(self.start, id)
+        # Step4: connect execute to ouput_id
+        for id in self.output_ids:
+            dag.add_edge(id, self.end)
+
 
 class SQLExecutor(ETL):
     """Basic interface for SQL executor
@@ -224,6 +225,7 @@ class ObjProcessor(ETL):
         Run ETL (extract, transform, and load)
         """
         # Extraction Step 
+        print("@Start extracting inputs:", self.input_ids)
         if len(self.input_ids):
             input_objs = self._extract_inputs()
         else:
@@ -236,6 +238,7 @@ class ObjProcessor(ETL):
         assert all([isinstance(obj, self.get_output_type()) for obj in output_objs]
                 ), f'One of the output_obj is not {self.get_output_type()}'
         # Load Step
+        print("@Start loading outputs:", self.output_ids)
         self._load(output_objs)
 
     def get_input_type(self):

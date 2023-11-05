@@ -112,7 +112,7 @@ class PyArrowStorage(Storage):
         elif isinstance(self._backend, RDB):
             self._backend.register(obj_id, pyarrow)
         else:
-            raise TypeError('backend should be RDB or LocalBackend')
+            raise TypeError('backend should be RDB or FileSystem')
 
     def download(self, obj_id: str) -> pa.Table:
         if isinstance(self._backend, FileSystem):
@@ -122,7 +122,7 @@ class PyArrowStorage(Storage):
             return self._backend.execute(
                 f"SELECT * FROM {obj_id}").arrow()
         else:
-            raise TypeError('backend should be RDB or LocalBackend')
+            raise TypeError('backend should be RDB or FileSystem')
 
 
 class VaexStorage(Storage):
@@ -144,7 +144,7 @@ class VaexStorage(Storage):
         else:
             raise TypeError('backend should be RDB or LocalBackend')
 
-    def download(self, obj_id: str) -> pd.DataFrame:
+    def download(self, obj_id: str) -> vx.DataFrame:
         if isinstance(self._backend, LocalBackend):
             result = vx.open(f'{self._backend._directory}{obj_id}')
             return result
