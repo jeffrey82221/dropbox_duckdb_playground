@@ -1,3 +1,12 @@
+"""
+Build Messy Node Id Convertor
+
+TODO:
+- [ ] In mapper.py, combine CanonMatcher & MessyMatcher & a new 
+    MapCombiner to produce a Mapping Table for Messy Node Ids
+- [ ] In convertor.py, allow class to takes `node` or `node_of_link`
+    as input for ID convertion. 
+"""
 from batch_framework.etl import SQLExecutor
 from batch_framework.filesystem import FileSystem
 from batch_framework.rdb import RDB

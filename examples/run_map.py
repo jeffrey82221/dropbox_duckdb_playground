@@ -17,7 +17,7 @@ from batch_framework.rdb import DuckDBBackend
 from resolution import (
     ERMeta, 
     CanonMatchLearner, MessyMatchLearner, 
-    CanonMatcher, MessyMatcher, IDConvertor
+    MappingGenerator
 )
 
 
@@ -47,18 +47,27 @@ meta = ERMeta(
         'before_marks': record['name']
     }
 )
-learner1 = CanonMatchLearner(meta, 
+canon_learner = CanonMatchLearner(meta, 
         PandasStorage(subgraph_fs), 
         JsonStorage(train_fs),
         model_fs=model_fs
     )
-learner2 = MessyMatchLearner(
+messy_learner = MessyMatchLearner(
     meta, 
     PandasStorage(subgraph_fs), 
     JsonStorage(train_fs),
     model_fs=model_fs
 )
-canon_matcher = CanonMatcher(meta,
+duck_db = DuckDBBackend()
+# meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB
+mapping = MappingGenerator(
+    meta,
+    subgraph_fs,
+    mapping_fs,
+    model_fs,
+    duck_db
+)
+"""canon_matcher = CanonMatcher(meta,
     PandasStorage(subgraph_fs), 
     PandasStorage(mapping_fs),
     model_fs=model_fs,
@@ -75,9 +84,9 @@ converter = IDConvertor(meta, DuckDBBackend(),
             source_fs=subgraph_fs,
             workspace_fs=mapping_fs,
             target_fs=subgraph_fs
-            )
+            )"""
 
 if __name__ == '__main__':
-    canon_matcher.execute()
-    messy_matcher.execute()
-    converter.execute()
+    # canon_learner.execute()
+    # messy_learner.execute()
+    mapping.execute()

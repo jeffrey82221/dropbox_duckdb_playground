@@ -29,6 +29,7 @@ class ETL:
         assert len(set(self.input_ids) & set(self.output_ids)) == 0, 'There should not be an object_id on both input_ids and output_ids'
         assert len(self.input_ids) == len(set(self.input_ids)), 'There should no be repeated id in self.input_ids'
         assert len(self.output_ids) == len(set(self.output_ids)), 'There should no be repeated id in self.output_ids'
+        assert all([id in self.input_ids for id in self.external_input_ids]), 'external input ids should be defined in input ids'
 
     @abc.abstractproperty
     def input_ids(self) -> List[str]:
@@ -41,13 +42,18 @@ class ETL:
     @abc.abstractproperty
     def output_ids(self) -> List[str]:
         """
-        Args:
-            **kwargs: some additional variable passed from scheduling engine (e.g., Airflow)
-
         Returns:
             List[str]: a list of output object ids
         """
         raise NotImplementedError
+    
+    @abc.abstractproperty
+    def external_input_ids(self) -> List[str]:
+        """
+        Returns:
+            List[str]: a list of input object ids passed from external scope
+        """
+        return []
     
     def execute(self, **kwargs):
         self.start(**kwargs)
@@ -78,6 +84,9 @@ class ETL:
         """Connecting input_ids, output_ids and execution method
         as nodes into dag.
         """
+        # Step0: add external_ids to dag
+        for id in self.external_input_ids:
+            dag.add_vertex(id)
         # Step1: add execute to dag
         dag.add_vertex(self)
         # Step2: connect input_id to execute
@@ -124,6 +133,9 @@ class ETLGroup(ETL):
         )
 
     def build(self, dag: DAG):
+        # Step0: add external_ids to dag
+        for id in self.external_input_ids:
+            dag.add_vertex(id)
         # Step1: connecting dag with all etl units
         for etl_unit in self.etl_units:
             etl_unit.build(dag)
@@ -225,7 +237,6 @@ class ObjProcessor(ETL):
         Run ETL (extract, transform, and load)
         """
         # Extraction Step 
-        print("@Start extracting inputs:", self.input_ids)
         if len(self.input_ids):
             input_objs = self._extract_inputs()
         else:
@@ -238,7 +249,6 @@ class ObjProcessor(ETL):
         assert all([isinstance(obj, self.get_output_type()) for obj in output_objs]
                 ), f'One of the output_obj is not {self.get_output_type()}'
         # Load Step
-        print("@Start loading outputs:", self.output_ids)
         self._load(output_objs)
 
     def get_input_type(self):
@@ -252,8 +262,12 @@ class ObjProcessor(ETL):
         Returns:
             List[object]: List of dataframe object to be passed to `transform`.
         """
-        input_tables = [self._input_storage.download(
-            id) for id in self.input_ids]
+        input_tables = []
+        for id in self.input_ids:
+            print(f'@{self} Start Extracting Input: {id}')
+            table = self._input_storage.download(id)
+            input_tables.append(table)
+            print(f'@{self} End Extracting Input: {id}')
         assert all([isinstance(obj, self.get_input_type()) for obj in input_tables]
                     ), f'One of the input_obj is not {self.get_input_type()}'
         return input_tables
@@ -264,4 +278,6 @@ class ObjProcessor(ETL):
             output_tables: List[object]: List of dataframe object passed from `transform`.
         """
         for id, table in zip(self.output_ids, output_tables):
+            print(f'@{self} Start Loading Output: {id}')
             self._output_storage.upload(table, id)
+            print(f'@{self} End Loading Output: {id}')
