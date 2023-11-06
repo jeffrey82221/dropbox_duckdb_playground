@@ -2,7 +2,8 @@
 .DS_Store
 */*/.DS_Store
 # Large Data 
-examples/data
+examples/data/canon
+examples/data/mapping
 # Byte-compiled / optimized / DLL files
 *.ini
 __pycache__/
