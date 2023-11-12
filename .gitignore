@@ -4,6 +4,7 @@
 # Large Data 
 examples/data/canon
 examples/data/mapping
+examples/data/partition
 # Byte-compiled / optimized / DLL files
 *.ini
 __pycache__/
