@@ -9,6 +9,7 @@ TODO:
 - [X] Get mapping 2 ( messy node -> cluster id)
 - [X] Combine mapping 1 & mapping 2
 - [X] Do mapping ( messy node -> canon / cluster node )
+- [ ] Decompose messy_matcher
 - [ ] Build merging layer
 """
 from batch_framework.storage import PandasStorage, JsonStorage
@@ -17,7 +18,8 @@ from batch_framework.rdb import DuckDBBackend
 from resolution import (
     ERMeta, 
     CanonMatchLearner, MessyMatchLearner, 
-    MappingGenerator
+    MappingGenerator, MessyBlocker, MessyFeatureEngineer, MessyEntityPairer, 
+    MessyFinalMatcher
 )
 
 
@@ -67,6 +69,32 @@ mapping = MappingGenerator(
     model_fs,
     duck_db
 )
+
+messy_feature_engineer = MessyFeatureEngineer(
+    meta,
+    PandasStorage(subgraph_fs), 
+    PandasStorage(mapping_fs),
+    model_fs=None
+)
+messy_blocker = MessyBlocker(
+    meta,
+    PandasStorage(mapping_fs), 
+    PandasStorage(mapping_fs),
+    model_fs=model_fs
+)
+
+messy_entity_map = MessyEntityPairer(
+    meta,
+    DuckDBBackend(),
+    mapping_fs
+)
+
+messy_matcher = MessyFinalMatcher(
+    meta,
+    PandasStorage(mapping_fs), 
+    PandasStorage(mapping_fs),
+    model_fs=model_fs,
+)
 """canon_matcher = CanonMatcher(meta,
     PandasStorage(subgraph_fs), 
     PandasStorage(mapping_fs),
@@ -89,4 +117,8 @@ converter = IDConvertor(meta, DuckDBBackend(),
 if __name__ == '__main__':
     # canon_learner.execute()
     # messy_learner.execute()
-    mapping.execute()
+    # messy_feature_engineer.execute()
+    # messy_blocker.execute()
+    messy_entity_map.execute()
+    messy_matcher.execute()
+    

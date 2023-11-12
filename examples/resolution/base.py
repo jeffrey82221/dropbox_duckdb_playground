@@ -30,7 +30,7 @@ class ERBase(ObjProcessor):
     def dedupe_fields(self):
         return self._meta.dedupe_fields
 
-    def _extract_messy_feature(self, df: pd.DataFrame) -> Dict:
+    def _extract_messy_feature(self, df: pd.DataFrame) -> Dict[str, Dict]:
         results = []
         for record in df.to_dict('records'):
             results.append((str(record['node_id']), self._meta.messy_lambda(record)))
