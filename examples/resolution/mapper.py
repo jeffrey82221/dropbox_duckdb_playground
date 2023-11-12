@@ -12,7 +12,7 @@ import tqdm
 __all__ = ['MappingGenerator', 
            'MessyFeatureEngineer', 
            'MessyEntityMapGenerator',
-           'MessyFinalMatcher'
+           'MessyPairSelector'
            ]
 
 class MappingGenerator(ETLGroup):
@@ -258,34 +258,25 @@ class MessyEntityPairer(SQLExecutor, MessyOnly):
         return [field['field'] for field in self._meta.dedupe_fields]
 
 
-class MessyFinalMatcher(MessyOnly, MatcherBase):
+class MessyPairSelector(MessyOnly, MatcherBase):
     def start(self):
         """Load model setting in the beginning
         """
         print('Start Loading Model to MessyMatcher')
         buff = self._model_fs.download_core(self.model_file_name)
         buff.seek(0)
-        self._deduper = dedupe.StaticDedupe(buff, num_cores=0)
+        self._deduper = dedupe.StaticDedupe(buff, num_cores=0, in_memory=True)
         print('Finish Creating dedupe.StaticDedupe of MessyMatcher')
     
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
-        clustered_dupes = self._deduper.cluster(
-            tqdm.tqdm(self._deduper.score(self.organize_pairs(inputs[0].to_dict('records'))), total=len(inputs[0]), desc='scoring'),
-            threshold=self._threshold
-        )
-        print('Finish Clustering...')
-        messy2cluster_mapping = []
-        for cluster_id, (records, scores) in tqdm.tqdm(enumerate(clustered_dupes), total=len(clustered_dupes), desc='cluster_mapping'):
-            for messy_id, score in zip(records, scores):
-                messy2cluster_mapping.append(
-                    (messy_id, f'c{cluster_id}', score)
-                )
-        table = pd.DataFrame(messy2cluster_mapping, 
-                             columns=['messy_id', 'cluster_id', 'score'])
-        print('# of Cluster:', len(clustered_dupes))
-        return [table]
-
-
+        table = inputs[0] #.head(1000)
+        scores = list(map(lambda x: [x[0][0], x[0][1], x[1]], filter(lambda x: x[1] > self._threshold, 
+                                                 tqdm.tqdm(self._deduper.score(self.organize_pairs(table.to_dict('records'))), 
+                                                           total=len(table), desc='scoring'))))
+        print('Finish Score Calculation of Size:', len(scores))
+        result = pd.DataFrame(scores, columns=['from', 'to', 'score'])
+        return [result]
+        
     def organize_pairs(self, records: Iterator[Dict]) -> Iterator[Tuple[Dict, Dict]]:
         _a_fields = self.a_fields
         _b_fields = self.b_fields
@@ -311,11 +302,33 @@ class MessyFinalMatcher(MessyOnly, MatcherBase):
     @property
     def input_ids(self):    
         return [f'{self.label}_entity_map']
-
+    
     @property
     def output_ids(self):
-        return [self.mapper_file_name]
+        return [f'{self.label}_id_pairs']
     
+"""Find Connected Components: 
+# find connected_components
+print(scores[0])
+raise
+clustered_dupes = self._deduper.cluster(
+    scores,
+    threshold=self._threshold
+)
+print('Finish Clustering...')
+messy2cluster_mapping = []
+for cluster_id, (records, scores) in tqdm.tqdm(enumerate(clustered_dupes), total=len(clustered_dupes), desc='cluster_mapping'):
+    for messy_id, score in zip(records, scores):
+        messy2cluster_mapping.append(
+            (messy_id, f'c{cluster_id}', score)
+        )
+table = pd.DataFrame(messy2cluster_mapping, 
+                        columns=['messy_id', 'cluster_id', 'score'])
+print('# of Cluster:', len(clustered_dupes))
+return [table]
+"""
+
+
 class MessyMatcher(MessyOnly, MatcherBase):
     """Produce Node Mapping using Dedupe Package
     

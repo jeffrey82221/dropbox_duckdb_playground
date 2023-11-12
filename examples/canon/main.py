@@ -3,6 +3,7 @@ from batch_framework.filesystem import LocalBackend
 from batch_framework.storage import PandasStorage, VaexStorage
 from batch_framework.etl import ETLGroup
 import os
+from parallize import MapReduce
 from .trigger import PyPiNameTrigger
 from .crawl import (
     LatestFeedback,
@@ -11,7 +12,6 @@ from .crawl import (
     LatestUpdator,
     Combine
 )
-from .parallize import MapReduce
 from .tabularize import LatestTabularize
 
 class SimplePyPiCanonicalize(ETLGroup):

@@ -12,10 +12,11 @@ from batch_framework.storage import Storage
 __all__ = ['MapReduce']
 
 class MapReduce(ETLGroup):
-    def __init__(self, map: ObjProcessor, parallel_count: int, tmp_storage: Storage):
+    def __init__(self, map: ObjProcessor, parallel_count: int, tmp_storage: Storage, has_external_input: bool=False):
         self._map = map
         self._tmp_storage = tmp_storage
         self._parallel_count = parallel_count
+        self._has_external_input = has_external_input
         class MapClass(ObjProcessor):
             def __init__(self, input_storage: Storage, partition_id: int):
                 self._partition_id = partition_id
@@ -28,9 +29,15 @@ class MapReduce(ETLGroup):
             @property
             def output_ids(self):
                 return [f'{id}.{self._partition_id}' for id in map.output_ids]
-
+            
             def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
                 return map.transform(inputs, **kwargs)
+            
+            def start(self, **kwargs):
+                return map.start(**kwargs)
+
+            def end(self, **kwargs):
+                return map.end(**kwargs)
             
         units = [
             Divide(
@@ -52,6 +59,13 @@ class MapReduce(ETLGroup):
         super().__init__(*units)
 
     @property
+    def external_input_ids(self) -> List[str]:
+        if self._has_external_input:
+            return self.input_ids
+        else:
+            return []
+        
+    @property
     def input_ids(self):
         return self._map.input_ids
 
@@ -59,7 +73,7 @@ class MapReduce(ETLGroup):
     def output_ids(self):
         return self._map.output_ids
 
-    def end(self):
+    def end(self, **kwargs):
         for id in self.input_ids:
             for i in range(self._parallel_count):
                 path = self._tmp_storage._backend._directory + id + f'.{i}'

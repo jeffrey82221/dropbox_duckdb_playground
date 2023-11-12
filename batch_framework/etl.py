@@ -7,7 +7,7 @@ TODO:
 """
 from paradag import DAG
 from paradag import dag_run
-from paradag import MultiThreadProcessor
+from paradag import MultiThreadProcessor, SequentialProcessor
 from typing import List, Dict, Optional
 import abc
 from .storage import Storage, PyArrowStorage
@@ -128,9 +128,14 @@ class ETLGroup(ETL):
         """
         dag = DAG()
         self.build(dag)
-        dag_run(dag, processor=MultiThreadProcessor(), 
-                executor=DagExecutor()
-        )
+        if 'sequential' in kwargs and kwargs['sequential']:
+            dag_run(dag, processor=SequentialProcessor(), 
+                    executor=DagExecutor()
+                    )
+        else:
+            dag_run(dag, processor=MultiThreadProcessor(), 
+                    executor=DagExecutor()
+            )
 
     def build(self, dag: DAG):
         # Step0: add external_ids to dag

@@ -19,14 +19,16 @@ from resolution import (
     ERMeta, 
     CanonMatchLearner, MessyMatchLearner, 
     MappingGenerator, MessyBlocker, MessyFeatureEngineer, MessyEntityPairer, 
-    MessyFinalMatcher
+    MessyPairSelector
 )
+from parallize import MapReduce
 
 
 subgraph_fs = LocalBackend('./data/subgraph/output/')
 train_fs = LocalBackend('./data/train/')
 model_fs = LocalBackend('./data/model/')
 mapping_fs = LocalBackend('./data/mapping/')
+partition_fs = LocalBackend('./data/partition/')
 meta = ERMeta(
     messy_node='requirement',
     canon_node='package',
@@ -89,12 +91,17 @@ messy_entity_map = MessyEntityPairer(
     mapping_fs
 )
 
-messy_matcher = MessyFinalMatcher(
+
+messy_pair_selector = MapReduce(MessyPairSelector(
     meta,
     PandasStorage(mapping_fs), 
     PandasStorage(mapping_fs),
     model_fs=model_fs,
+), 10, PandasStorage(partition_fs), has_external_input=True
 )
+
+# DO connected component algorithm: 
+
 """canon_matcher = CanonMatcher(meta,
     PandasStorage(subgraph_fs), 
     PandasStorage(mapping_fs),
@@ -119,6 +126,6 @@ if __name__ == '__main__':
     # messy_learner.execute()
     # messy_feature_engineer.execute()
     # messy_blocker.execute()
-    messy_entity_map.execute()
-    messy_matcher.execute()
+    # messy_entity_map.execute()
+    messy_pair_selector.execute(sequential=True)
     
