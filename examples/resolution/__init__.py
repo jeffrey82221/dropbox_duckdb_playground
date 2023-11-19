@@ -1,12 +1,7 @@
 from .meta import ERMeta
 from .learner import CanonMatchLearner, MessyMatchLearner
 from .mapper import (MappingGenerator, 
-                     MessyMatcher, 
-                     MessyFeatureEngineer, 
-                     MessyBlocker, 
-                     MessyEntityPairer,
-                     MessyPairSelector,
-                     MessyClusterer
+                     MessyMatcher
                      )
 from .convertor import IDConvertor
 
@@ -16,10 +11,5 @@ __all__ = [
     'MessyMatchLearner', 
     'MappingGenerator',
     'IDConvertor',
-    'MessyMatcher',
-    'MessyBlocker',
-    'MessyFeatureEngineer',
-    'MessyEntityPairer',
-    'MessyPairSelector',
-    'MessyClusterer'
+    'MessyMatcher'
 ]

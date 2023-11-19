@@ -79,11 +79,22 @@ class MapReduce(ETLGroup):
         return self._map.output_ids
 
     def end(self, **kwargs):
+        for id in self.input_ids:
+            for i in range(self._parallel_count):
+                path = self._tmp_storage._backend._directory + id + f'.{i}'
+                MapReduce._drop_partition(path)
         for id in self.output_ids:
             for i in range(self._parallel_count):
                 path = self._tmp_storage._backend._directory + id + f'.{i}'
-                if os.path.exists(path):
-                    os.remove(path)
+                MapReduce._drop_partition(path)
+
+    @staticmethod
+    def _drop_partition(path):
+        if os.path.exists(path):
+            os.remove(path)
+            print('[drop_partition]', path, 'removed!')
+        else:
+            print('[drop_partition]', path, 'not found!')
 
 class Base(ObjProcessor):
     def __init__(self, obj_ids: List[str], divide_count: int, input_storage: Storage, output_storage: Storage):

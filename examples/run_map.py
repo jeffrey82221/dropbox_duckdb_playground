@@ -18,11 +18,9 @@ from batch_framework.rdb import DuckDBBackend
 from resolution import (
     ERMeta, 
     CanonMatchLearner, MessyMatchLearner, 
-    MappingGenerator, MessyBlocker, MessyFeatureEngineer, MessyEntityPairer, 
-    MessyPairSelector, MessyClusterer
+    MappingGenerator, MessyMatcher
 )
 from parallize import MapReduce
-from resolution.mapper import MessyEntityMapValidate
 
 subgraph_fs = LocalBackend('./data/subgraph/output/')
 train_fs = LocalBackend('./data/train/')
@@ -72,47 +70,14 @@ mapping = MappingGenerator(
     duck_db
 )
 
-messy_feature_engineer = MessyFeatureEngineer(
+messy_matcher = MessyMatcher(
     meta,
-    PandasStorage(subgraph_fs), 
-    PandasStorage(mapping_fs),
-    model_fs=None
-)
-messy_blocker = MessyBlocker(
-    meta,
-    PandasStorage(mapping_fs), 
-    PandasStorage(mapping_fs),
-    model_fs=model_fs
-)
-
-messy_entity_map = MessyEntityPairer(
-    meta,
+    subgraph_fs,
+    mapping_fs,
+    model_fs, 
     DuckDBBackend(),
-    mapping_fs
-)
-
-
-messy_pair_selector = MapReduce(MessyPairSelector(
-    meta,
-    PandasStorage(mapping_fs), 
-    PandasStorage(mapping_fs),
-    model_fs=model_fs,
-), 10, PandasStorage(partition_fs), has_external_input=True
-)
-
-
-messy_node_validation = MessyEntityMapValidate(
-    meta, 
-    PandasStorage(mapping_fs), 
-    PandasStorage(mapping_fs),
-    model_fs=None
-)
-
-messy_cluster = MessyClusterer(
-    meta,
-    PandasStorage(mapping_fs), 
-    PandasStorage(mapping_fs),
-    model_fs=None
+    pairing_worker_count=10,
+    threshold=0.5
 )
 # DO connected component algorithm: 
 
@@ -143,5 +108,6 @@ if __name__ == '__main__':
     # messy_entity_map.execute()
     # messy_pair_selector.execute(sequential=True)
     # -- messy_node_validation.execute()
-    messy_cluster.execute()
+    # messy_cluster.execute()
+    messy_matcher.execute(sequential=True)
     
