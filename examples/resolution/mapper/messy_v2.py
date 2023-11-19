@@ -85,14 +85,6 @@ class MessyMatcher(ETLGroup):
     @property
     def label(self):
         return self._meta.messy_node
-    
-    @property
-    def external_input_ids(self) -> List[str]:
-        """
-        Returns:
-            List[str]: a list of input object ids passed from external scope
-        """
-        return self.input_ids
 
     def start(self, **kwargs):
         from pathlib import Path

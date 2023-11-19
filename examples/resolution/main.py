@@ -1,14 +1,21 @@
+"""
+TODO:
+- [ ] Add ID convertor / Links to Mapping Generator 
+    -> Build Entity Resolution Class
+"""
 from typing import List
+import os
 from batch_framework.storage import PandasStorage
 from batch_framework.filesystem import FileSystem
 from batch_framework.etl import SQLExecutor, ETLGroup
 from batch_framework.rdb import RDB
-from ..meta import ERMeta
-from .canon import CanonMatcher
-from .messy import MessyMatcher
+from .meta import ERMeta
+from .mapper import CanonMatcher
+from .mapper import MessyMatcher
 
 class MappingGenerator(ETLGroup):
     def __init__(self, meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB):
+        self._mapping_fs = mapping_fs
         canon_matcher = CanonMatcher(meta,
             PandasStorage(subgraph_fs), 
             PandasStorage(mapping_fs),
@@ -17,9 +24,10 @@ class MappingGenerator(ETLGroup):
         )
         messy_matcher = MessyMatcher(
             meta,
-            PandasStorage(subgraph_fs), 
-            PandasStorage(mapping_fs),
-            model_fs=model_fs,
+            subgraph_fs,
+            mapping_fs,
+            model_fs,
+            rdb,
             threshold=0.5
         )
         mapping_combiner = MappingCombiner(
@@ -51,6 +59,22 @@ class MappingGenerator(ETLGroup):
             f'mapper_{self._meta.messy_node}' + '_clean'
         ]
 
+    def end(self, **kwargs):
+        for id in [
+                f'mapper_{self._meta.messy_node}2{self._meta.canon_node}',
+                f'mapper_{self._meta.messy_node}'
+            ]:
+            path = self._mapping_fs._directory + id
+            MessyMatcher._drop_tmp(path)
+
+    @staticmethod    
+    def _drop_tmp(path):
+        if os.path.exists(path):
+            os.remove(path)
+            print('[_drop_tmp]', path, 'dropped')
+        else:
+            print('[_drop_tmp]', path, 'not found')
+
 
 class MappingCombiner(SQLExecutor):
     """
@@ -59,7 +83,7 @@ class MappingCombiner(SQLExecutor):
     def __init__(self, meta: ERMeta, rdb: RDB, workspace_fs: FileSystem):
         self._workspace_fs = workspace_fs
         self._meta = meta
-        super().__init__(rdb, input_fs=workspace_fs)
+        super().__init__(rdb, input_fs=workspace_fs, output_fs=workspace_fs)
         
     @property
     def input_ids(self):

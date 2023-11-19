@@ -1,15 +1,10 @@
 from .meta import ERMeta
 from .learner import CanonMatchLearner, MessyMatchLearner
-from .mapper import (MappingGenerator, 
-                     MessyMatcher
-                     )
-from .convertor import IDConvertor
+from .main import MappingGenerator
 
 __all__ = [
     'ERMeta', 
     'CanonMatchLearner', 
-    'MessyMatchLearner', 
-    'MappingGenerator',
-    'IDConvertor',
-    'MessyMatcher'
+    'MessyMatchLearner',
+    'MappingGenerator'
 ]

@@ -18,7 +18,7 @@ from batch_framework.rdb import DuckDBBackend
 from resolution import (
     ERMeta, 
     CanonMatchLearner, MessyMatchLearner, 
-    MappingGenerator, MessyMatcher
+    MappingGenerator
 )
 from parallize import MapReduce
 
@@ -70,6 +70,9 @@ mapping = MappingGenerator(
     duck_db
 )
 
+# DO connected component algorithm: 
+
+"""
 messy_matcher = MessyMatcher(
     meta,
     subgraph_fs,
@@ -79,9 +82,7 @@ messy_matcher = MessyMatcher(
     pairing_worker_count=10,
     threshold=0.5
 )
-# DO connected component algorithm: 
-
-"""canon_matcher = CanonMatcher(meta,
+canon_matcher = CanonMatcher(meta,
     PandasStorage(subgraph_fs), 
     PandasStorage(mapping_fs),
     model_fs=model_fs,
@@ -101,6 +102,7 @@ converter = IDConvertor(meta, DuckDBBackend(),
             )"""
 
 if __name__ == '__main__':
+    mapping.execute(sequential=True)
     # canon_learner.execute()
     # messy_learner.execute()
     # messy_feature_engineer.execute()
@@ -109,5 +111,5 @@ if __name__ == '__main__':
     # messy_pair_selector.execute(sequential=True)
     # -- messy_node_validation.execute()
     # messy_cluster.execute()
-    messy_matcher.execute(sequential=True)
+    # messy_matcher.execute(sequential=True)
     
