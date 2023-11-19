@@ -19,10 +19,10 @@ from resolution import (
     ERMeta, 
     CanonMatchLearner, MessyMatchLearner, 
     MappingGenerator, MessyBlocker, MessyFeatureEngineer, MessyEntityPairer, 
-    MessyPairSelector
+    MessyPairSelector, MessyClusterer
 )
 from parallize import MapReduce
-
+from resolution.mapper import MessyEntityMapValidate
 
 subgraph_fs = LocalBackend('./data/subgraph/output/')
 train_fs = LocalBackend('./data/train/')
@@ -100,6 +100,20 @@ messy_pair_selector = MapReduce(MessyPairSelector(
 ), 10, PandasStorage(partition_fs), has_external_input=True
 )
 
+
+messy_node_validation = MessyEntityMapValidate(
+    meta, 
+    PandasStorage(mapping_fs), 
+    PandasStorage(mapping_fs),
+    model_fs=None
+)
+
+messy_cluster = MessyClusterer(
+    meta,
+    PandasStorage(mapping_fs), 
+    PandasStorage(mapping_fs),
+    model_fs=None
+)
 # DO connected component algorithm: 
 
 """canon_matcher = CanonMatcher(meta,
@@ -127,5 +141,7 @@ if __name__ == '__main__':
     # messy_feature_engineer.execute()
     # messy_blocker.execute()
     # messy_entity_map.execute()
-    messy_pair_selector.execute(sequential=True)
+    # messy_pair_selector.execute(sequential=True)
+    # -- messy_node_validation.execute()
+    messy_cluster.execute()
     

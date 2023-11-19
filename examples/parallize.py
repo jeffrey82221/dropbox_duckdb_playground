@@ -37,7 +37,12 @@ class MapReduce(ETLGroup):
                 return map.start(**kwargs)
 
             def end(self, **kwargs):
-                return map.end(**kwargs)
+                result = map.end(**kwargs)
+                for id in self.input_ids:
+                    path = tmp_storage._backend._directory + id + f'.{self._partition_id}'
+                    if os.path.exists(path):
+                        os.remove(path)
+                return result
             
         units = [
             Divide(
@@ -74,14 +79,11 @@ class MapReduce(ETLGroup):
         return self._map.output_ids
 
     def end(self, **kwargs):
-        for id in self.input_ids:
-            for i in range(self._parallel_count):
-                path = self._tmp_storage._backend._directory + id + f'.{i}'
-                os.remove(path)
         for id in self.output_ids:
             for i in range(self._parallel_count):
                 path = self._tmp_storage._backend._directory + id + f'.{i}'
-                os.remove(path)
+                if os.path.exists(path):
+                    os.remove(path)
 
 class Base(ObjProcessor):
     def __init__(self, obj_ids: List[str], divide_count: int, input_storage: Storage, output_storage: Storage):

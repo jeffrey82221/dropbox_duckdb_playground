@@ -5,7 +5,8 @@ from .mapper import (MappingGenerator,
                      MessyFeatureEngineer, 
                      MessyBlocker, 
                      MessyEntityPairer,
-                     MessyPairSelector
+                     MessyPairSelector,
+                     MessyClusterer
                      )
 from .convertor import IDConvertor
 
@@ -19,5 +20,6 @@ __all__ = [
     'MessyBlocker',
     'MessyFeatureEngineer',
     'MessyEntityPairer',
-    'MessyPairSelector'
+    'MessyPairSelector',
+    'MessyClusterer'
 ]

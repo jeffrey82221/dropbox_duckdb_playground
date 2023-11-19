@@ -12,7 +12,8 @@ import tqdm
 __all__ = ['MappingGenerator', 
            'MessyFeatureEngineer', 
            'MessyEntityMapGenerator',
-           'MessyPairSelector'
+           'MessyPairSelector',
+           'MessyClusterer'
            ]
 
 class MappingGenerator(ETLGroup):
@@ -165,6 +166,9 @@ class MessyFeatureEngineer(MessyOnly, MatcherBase):
         table = pd.DataFrame.from_dict(self.feature_generation(inputs[0].to_dict('records')))
         print(table)
         assert len(table) == len(inputs[0])
+        origin_node_ids = set(inputs[0].node_id.tolist())
+        processed_node_ids = set(table.node_id.tolist())
+        print('common node ids:', len(origin_node_ids & processed_node_ids))
         return [table]
 
     def feature_generation(self, records: Iterator[Dict]) -> Iterator[Dict]:
@@ -200,6 +204,9 @@ class MessyBlocker(MessyOnly, MatcherBase):
         b_data = self._deduper.fingerprinter(self.to_fingerprinter(table))
         result = pd.read_csv(Readable(b_data), names = ['block_key', 'messy_id'], header=None)
         print(result)
+        origin_node_ids = set(inputs[0].node_id.tolist())
+        processed_node_ids = set(result.messy_id.tolist())
+        print('common node ids:', len(origin_node_ids & processed_node_ids))
         return [result]
 
     def to_fingerprinter(self, table: pd.DataFrame) -> List[Dict]:
@@ -257,6 +264,27 @@ class MessyEntityPairer(SQLExecutor, MessyOnly):
     def fields(self) -> List[str]:
         return [field['field'] for field in self._meta.dedupe_fields]
 
+class MessyEntityMapValidate(MessyOnly, MatcherBase):
+    @property
+    def input_ids(self):
+        return [f'{self.messy_node}_feature', f'{self.messy_node}_entity_map', f'{self.messy_node}_id_pairs']
+
+    @property
+    def output_ids(self):
+        return []
+    
+    def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
+        feature_table = inputs[0]
+        entity_map_table = inputs[1]
+        id_pairs_table = inputs[2]
+        feature_node_ids = set(feature_table.node_id.tolist())
+        block_table_nodes = set(entity_map_table.a_node_id.tolist()) | set(entity_map_table.b_node_id.tolist())
+        print('common node ids:', len(feature_node_ids & block_table_nodes))
+        id_pairs_table['from'] = id_pairs_table['from'].map(int)
+        id_pairs_table['to'] = id_pairs_table['to'].map(int)
+        id_pairs_nodes = set(id_pairs_table['from'].tolist()) | set(id_pairs_table['to'].tolist())
+        print('common node ids:', len(id_pairs_nodes & block_table_nodes))
+        return []
 
 class MessyPairSelector(MessyOnly, MatcherBase):
     def start(self):
@@ -269,12 +297,14 @@ class MessyPairSelector(MessyOnly, MatcherBase):
         print('Finish Creating dedupe.StaticDedupe of MessyMatcher')
     
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
-        table = inputs[0] #.head(1000)
+        table = inputs[0]
         scores = list(map(lambda x: [x[0][0], x[0][1], x[1]], filter(lambda x: x[1] > self._threshold, 
                                                  tqdm.tqdm(self._deduper.score(self.organize_pairs(table.to_dict('records'))), 
                                                            total=len(table), desc='scoring'))))
         print('Finish Score Calculation of Size:', len(scores))
         result = pd.DataFrame(scores, columns=['from', 'to', 'score'])
+        # result['from'] = result['from'].map(int)
+        # result['to'] = result['to'].map(int)
         return [result]
         
     def organize_pairs(self, records: Iterator[Dict]) -> Iterator[Tuple[Dict, Dict]]:
@@ -306,28 +336,45 @@ class MessyPairSelector(MessyOnly, MatcherBase):
     @property
     def output_ids(self):
         return [f'{self.label}_id_pairs']
-    
-"""Find Connected Components: 
-# find connected_components
-print(scores[0])
-raise
-clustered_dupes = self._deduper.cluster(
-    scores,
-    threshold=self._threshold
-)
-print('Finish Clustering...')
-messy2cluster_mapping = []
-for cluster_id, (records, scores) in tqdm.tqdm(enumerate(clustered_dupes), total=len(clustered_dupes), desc='cluster_mapping'):
-    for messy_id, score in zip(records, scores):
-        messy2cluster_mapping.append(
-            (messy_id, f'c{cluster_id}', score)
-        )
-table = pd.DataFrame(messy2cluster_mapping, 
-                        columns=['messy_id', 'cluster_id', 'score'])
-print('# of Cluster:', len(clustered_dupes))
-return [table]
-"""
 
+import igraph as ig
+class MessyClusterer(MessyOnly, MatcherBase):
+    """Find Connected Components"""
+    @property
+    def input_ids(self):
+        return [f'{self.label}_id_pairs', f'{self.label}_feature']
+    
+    @property
+    def output_ids(self):
+        return [f'{self.label}_cluster_map']
+    
+    def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
+        id_pair_df = inputs[0]
+        id_pair_df['from'] = id_pair_df['from'].map(int)
+        id_pair_df['to'] = id_pair_df['to'].map(int)
+        feature_df = inputs[1]
+        node_set_in_pair = set(id_pair_df['from'].tolist()) | set(id_pair_df['to'].tolist())
+        node_set_in_feature = set(feature_df.node_id.tolist()) 
+        print('node size in pairs:', len(node_set_in_pair))
+        print('node size in feature table:', len(node_set_in_feature))
+        print('common nodes in two table:', len(node_set_in_pair&node_set_in_feature))
+        feature_df.set_index('node_id', inplace=True)
+        g = ig.Graph.TupleList(
+            id_pair_df.itertuples(index=False), directed=True, weights=False, edge_attrs="score")
+        components = g.connected_components(mode='weak')
+        messy2cluster_mapping = []
+        for cluster_id, cluster_group in enumerate(components):
+            messy_ids = [g.vs[id]['name'] for id in cluster_group]
+            package_names = feature_df.loc[messy_ids]['full_name'].tolist()
+            print('cluster', cluster_id, len(messy_ids), package_names[:10], '...')
+            for messy_id in cluster_group:
+                messy2cluster_mapping.append(
+                    (messy_id, f'c{cluster_id}')
+                )
+        table = pd.DataFrame(messy2cluster_mapping, 
+                        columns=['messy_id', 'cluster_id'])
+        print('# of Cluster:', cluster_id + 1)
+        return [table]
 
 class MessyMatcher(MessyOnly, MatcherBase):
     """Produce Node Mapping using Dedupe Package

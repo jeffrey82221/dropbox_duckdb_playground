@@ -24,8 +24,8 @@ class ETL:
     Basic Interface for defining a unit of ETL flow.
     """
     def __init__(self):
-        assert isinstance(self.input_ids, list), f'def input_ids is not a list of string but {self.input_ids} on {self}'
-        assert isinstance(self.output_ids, list), f'def output_ids is not a list of string but {self.output_ids} on {self}'
+        assert isinstance(self.input_ids, list), f'property input_ids is not a list of string but {type(self.input_ids)} on {self}'
+        assert isinstance(self.output_ids, list), f'property output_ids is not a list of string but {type(self.output_ids)} on {self}'
         assert len(set(self.input_ids) & set(self.output_ids)) == 0, 'There should not be an object_id on both input_ids and output_ids'
         assert len(self.input_ids) == len(set(self.input_ids)), 'There should no be repeated id in self.input_ids'
         assert len(self.output_ids) == len(set(self.output_ids)), 'There should no be repeated id in self.output_ids'
