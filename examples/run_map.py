@@ -20,7 +20,6 @@ from resolution import (
     CanonMatchLearner, MessyMatchLearner, 
     MappingGenerator
 )
-from parallize import MapReduce
 
 subgraph_fs = LocalBackend('./data/subgraph/output/')
 train_fs = LocalBackend('./data/train/')

@@ -12,6 +12,7 @@ from batch_framework.rdb import RDB
 from .meta import ERMeta
 from .mapper import CanonMatcher
 from .mapper import MessyMatcher
+from .convertor import IDConvertor
 
 class MappingGenerator(ETLGroup):
     def __init__(self, meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB):
@@ -35,10 +36,17 @@ class MappingGenerator(ETLGroup):
             rdb,
             workspace_fs=mapping_fs
         )
+        id_convertor = IDConvertor(
+            meta,
+            rdb,
+            subgraph_fs,
+            subgraph_fs
+        )
         super().__init__(
             canon_matcher,
             messy_matcher,
-            mapping_combiner
+            mapping_combiner,
+            id_convertor
         )
         self._meta = meta
 
@@ -56,7 +64,7 @@ class MappingGenerator(ETLGroup):
     @property
     def output_ids(self):
         return [
-            f'mapper_{self._meta.messy_node}' + '_clean'
+            self._meta.messy_node + '_clean'
         ]
 
     def end(self, **kwargs):
@@ -83,7 +91,7 @@ class MappingCombiner(SQLExecutor):
     def __init__(self, meta: ERMeta, rdb: RDB, workspace_fs: FileSystem):
         self._workspace_fs = workspace_fs
         self._meta = meta
-        super().__init__(rdb, input_fs=workspace_fs, output_fs=workspace_fs)
+        super().__init__(rdb, input_fs=workspace_fs)
         
     @property
     def input_ids(self):
