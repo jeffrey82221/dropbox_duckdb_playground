@@ -123,6 +123,9 @@ class ETLGroup(ETL):
     def __init__(self, *etl_units: List[ETL]):
         self.etl_units = etl_units
     
+    def execute(self, **kwargs):
+        self._execute(**kwargs)
+
     def _execute(self, **kwargs):
         """Execute ETL units
         """
@@ -153,7 +156,7 @@ class ETLGroup(ETL):
         # Step4: Connect end to all output_ids
         for id in self.input_ids:
             dag.add_edge(self.start, id)
-        # Step4: connect execute to ouput_id
+        # Step5: connect execute to ouput_id
         for id in self.output_ids:
             dag.add_edge(id, self.end)
 
@@ -198,11 +201,13 @@ class SQLExecutor(ETL):
         assert set(self.sqls(**kwargs).keys()) == set(self.output_ids), 'sqls key should corresponds to the output_ids'
         # Extract Table and Load into RDB from FileSystem
         if self._input_storage is not None:
-            [self._rdb.register(id, self._input_storage.download(id)) for id in self.input_ids]
+            for id in self.input_ids:
+                if self._input_storage._backend.check_exists(id):
+                    self._rdb.register(id, self._input_storage.download(id))
         # Do transform using SQL on RDB
         for output_id, sql in self.sqls(**kwargs).items():
             self._rdb.execute(f'''
-                  CREATE TABLE {output_id} AS ({sql});
+            CREATE TABLE {output_id} AS ({sql});
             ''')
         # Load Table into FileSystem from RDB
         if self._output_storage is not None:
