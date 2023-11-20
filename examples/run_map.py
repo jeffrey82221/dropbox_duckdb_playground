@@ -59,46 +59,15 @@ messy_learner = MessyMatchLearner(
     JsonStorage(train_fs),
     model_fs=model_fs
 )
-duck_db = DuckDBBackend()
 # meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB
 mapping = MappingGenerator(
     meta,
     subgraph_fs,
     mapping_fs,
     model_fs,
-    duck_db
+    DuckDBBackend()
 )
 
-# DO connected component algorithm: 
-
-"""
-messy_matcher = MessyMatcher(
-    meta,
-    subgraph_fs,
-    mapping_fs,
-    model_fs, 
-    DuckDBBackend(),
-    pairing_worker_count=10,
-    threshold=0.5
-)
-canon_matcher = CanonMatcher(meta,
-    PandasStorage(subgraph_fs), 
-    PandasStorage(mapping_fs),
-    model_fs=model_fs,
-    threshold=0.25
-)
-messy_matcher = MessyMatcher(
-    meta,
-    PandasStorage(subgraph_fs), 
-    PandasStorage(mapping_fs),
-    model_fs=model_fs,
-    threshold=0.5
-)
-converter = IDConvertor(meta, DuckDBBackend(), 
-            source_fs=subgraph_fs,
-            workspace_fs=mapping_fs,
-            target_fs=subgraph_fs
-            )"""
 
 if __name__ == '__main__':
     mapping.execute(sequential=True)

@@ -1,17 +1,23 @@
 from batch_framework.rdb import DuckDBBackend
 from batch_framework.filesystem import LocalBackend
 from batch_framework.storage import PandasStorage
-from subgraph.links import LinkExtractor
-from subgraph.nodes import NodeExtractor
-from subgraph.validate import Validation
+from subgraph.main import SubgraphExtractor
+from subgraph.metagraph import MetaGraph
+
+metagraph = MetaGraph({
+    'has_requirement': ('package', 'requirement'),
+    'has_author': ('package', 'author'), 
+    'has_maintainer': ('package', 'maintainer'), 
+    'has_license': ('package', 'license'), 
+    'has_docs_url': ('package', 'docs_url'), 
+    'has_home_page': ('package', 'home_page'), 
+    'has_project_url': ('package', 'project_url')
+})
+
+input_fs = LocalBackend('./data/canon/output/')
+output_fs = LocalBackend('./data/subgraph/output/')
+db = DuckDBBackend()
+subgraph_extractor = SubgraphExtractor(metagraph, db, input_fs, output_fs)
 
 if __name__ == '__main__':
-    input_fs = LocalBackend('./data/canon/output/')
-    output_fs = LocalBackend('./data/subgraph/output/')
-    db = DuckDBBackend()
-    link_op = LinkExtractor(db, input_fs=input_fs, output_fs=output_fs)
-    node_op = NodeExtractor(db, input_fs=input_fs, output_fs=output_fs)
-    val_op = Validation(PandasStorage(db))
-    link_op.execute()
-    node_op.execute()
-    val_op.execute()
+    subgraph_extractor.execute(sequential=True)

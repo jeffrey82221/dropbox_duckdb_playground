@@ -5,8 +5,16 @@ from typing import List
 import pandas as pd
 from batch_framework.etl import ObjProcessor
 from batch_framework.storage import PandasStorage
+from batch_framework.etl import ETLGroup
+from .metagraph import MetaGraph
 
-class IDValidator(ObjProcessor):
+__all__ = ['Validator']
+
+class LinkIDValidator(ObjProcessor):
+    """
+    Check whether link source/target IDs are subset 
+    of corresponding node IDs.
+    """
     def __init__(self, link: str, src_node: str, target_node: str, input_storage: PandasStorage):
         self._link = link
         self._src_node = src_node
@@ -43,32 +51,27 @@ class IDValidator(ObjProcessor):
         assert link_target_ids.issubset(target_ids), 'some target node in link is not in the target node table'
         return []
 
-class Validation:
-    def __init__(self, storage: PandasStorage):
+class Validator(ETLGroup):
+    def __init__(self, metagraph: MetaGraph, storage: PandasStorage):
         self._storage = storage
+        self.metagraph = metagraph
+        super().__init__(*self.validator_list)
 
     @property
-    def subgraph_list(self):
-        return {
-            'has_requirement': ('package', 'requirement'),
-            'has_author': ('package', 'author'), 
-            'has_maintainer': ('package', 'maintainer'), 
-            'has_license': ('package', 'license'), 
-            'has_docs_url': ('package', 'docs_url'), 
-            'has_home_page': ('package', 'home_page'), 
-            'has_project_url': ('package', 'project_url')
-        }
+    def input_ids(self):
+        results = []
+        results.extend(self.metagraph.nodes)
+        results.extend(self.metagraph.links)
+        return results
+    
+    @property
+    def output_ids(self):
+        return []
 
     @property
     def validator_list(self):
         results = []
-        for link, (src_node, target_node) in self.subgraph_list.items():
-            results.append(IDValidator(link, src_node, target_node, self._storage))
+        for link, (src_node, target_node) in self.metagraph._metagraph.items():
+            results.append(LinkIDValidator(link, src_node, target_node, self._storage))
         return results
-    
-    def execute(self):
-        for op in self.validator_list:
-            print('Start validating', op._link)
-            op.execute()
-            print('End validating', op._link)
 
