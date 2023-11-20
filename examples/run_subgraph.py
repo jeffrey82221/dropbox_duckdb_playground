@@ -1,6 +1,16 @@
+"""
+Build Flow of:
+- [ ] Subgraph Extraction
+    - Define relation between link & node of subgraph
+- [ ] Entity Resolution
+    - Define mapping of nodes between two subgraph
+- [ ] Graph Merging
+    - Define nodes that should be merged. 
+    - Include ERMeta to build a hidden flow start from cleaned nodes. 
+"""
+
 from batch_framework.rdb import DuckDBBackend
 from batch_framework.filesystem import LocalBackend
-from batch_framework.storage import PandasStorage
 from subgraph.main import SubgraphExtractor
 from subgraph.metagraph import MetaGraph
 
