@@ -7,14 +7,13 @@ from .metagraph import MetaGraph
 __all__ = ['LinkExtractor', 'NodeExtractor']
 
 class ExtractorBase(SQLExecutor):
-    def __init__(self, metagraph: MetaGraph, input_ids: List[str], rdb: RDB, input_fs: FileSystem, output_fs: FileSystem):
+    def __init__(self, metagraph: MetaGraph, rdb: RDB, input_fs: FileSystem, output_fs: FileSystem):
         self._metagraph = metagraph
-        self._input_ids = input_ids
         super().__init__(rdb, input_fs=input_fs, output_fs=output_fs)
 
     @property
     def input_ids(self):
-        return self._input_ids
+        return self._metagraph.input_ids
     
 class NodeExtractor(ExtractorBase):
     @property

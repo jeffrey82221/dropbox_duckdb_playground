@@ -11,19 +11,18 @@ class SubgraphExtractor(ETLGroup):
     """
     Extract Link and Node from Raw Tabular Data
     """
-    def __init__(self, input_ids: List[str], metagraph: MetaGraph, rdb: RDB, input_fs: FileSystem, output_fs: FileSystem):
-        self._input_ids = input_ids
+    def __init__(self, metagraph: MetaGraph, rdb: RDB, input_fs: FileSystem, output_fs: FileSystem):
         self._metagraph = metagraph
         link_op = LinkExtractor(
-            metagraph=metagraph, input_ids=input_ids, rdb=rdb, input_fs=input_fs, output_fs=output_fs)
+            metagraph=metagraph, rdb=rdb, input_fs=input_fs, output_fs=output_fs)
         node_op = NodeExtractor(
-            metagraph=metagraph, input_ids=input_ids, rdb=rdb, input_fs=input_fs, output_fs=output_fs)
+            metagraph=metagraph, rdb=rdb, input_fs=input_fs, output_fs=output_fs)
         val_op = Validator(metagraph, PandasStorage(rdb))
         super().__init__(link_op, node_op, val_op)
 
     @property
     def input_ids(self) -> List[str]:
-        return self._input_ids
+        return self._metagraph.input_ids
     
     @property
     def external_input_ids(self) -> List[str]:

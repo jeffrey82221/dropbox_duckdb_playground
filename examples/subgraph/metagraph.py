@@ -1,8 +1,9 @@
 from typing import Dict, Tuple, List
 
 class MetaGraph:
-    def __init__(self, metagraph: Dict[str, Tuple[str, str]]):
+    def __init__(self, metagraph: Dict[str, Tuple[str, str]], input_ids: List[str]):
         self._metagraph = metagraph
+        self.input_ids = input_ids
 
     @property
     def nodes(self) -> List[str]:
