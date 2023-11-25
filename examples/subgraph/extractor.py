@@ -2,31 +2,24 @@ from typing import List
 from batch_framework.etl import SQLExecutor
 from batch_framework.rdb import RDB
 from batch_framework.filesystem import FileSystem
+from .metagraph import MetaGraph
 
 __all__ = ['LinkExtractor', 'NodeExtractor']
 
-class NodeExtractor(SQLExecutor):
-    def __init__(self, input_ids: List[str], rdb: RDB, input_fs: FileSystem, output_fs: FileSystem):
+class ExtractorBase(SQLExecutor):
+    def __init__(self, metagraph: MetaGraph, input_ids: List[str], rdb: RDB, input_fs: FileSystem, output_fs: FileSystem):
+        self._metagraph = metagraph
         self._input_ids = input_ids
         super().__init__(rdb, input_fs=input_fs, output_fs=output_fs)
 
     @property
     def input_ids(self):
         return self._input_ids
-
+    
+class NodeExtractor(ExtractorBase):
     @property
     def output_ids(self):
-        return [
-            'package', 
-            'requirement', 
-            'author', 
-            'maintainer', 
-            'license', 
-            'docs_url', 
-            'home_page', 
-            'project_url'
-        ]
-    
+        return self._metagraph.nodes
     
     def sqls(self, **kwargs):
         return {
@@ -115,27 +108,10 @@ class NodeExtractor(SQLExecutor):
             """
         }
 
-class LinkExtractor(SQLExecutor):
-    def __init__(self, input_ids: List[str], rdb: RDB, input_fs: FileSystem, output_fs: FileSystem):
-        self._input_ids = input_ids
-        super().__init__(rdb, input_fs=input_fs, output_fs=output_fs)
-
-    @property
-    def input_ids(self):
-        return self._input_ids
-
+class LinkExtractor(ExtractorBase):
     @property
     def output_ids(self):
-        return [ 
-            'has_requirement', 
-            'has_author', 
-            'has_maintainer', 
-            'has_license', 
-            'has_docs_url', 
-            'has_home_page', 
-            'has_project_url'
-        ]
-    
+        return self._metagraph.links
     
     def sqls(self, **kwargs):
         return {
