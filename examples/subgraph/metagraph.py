@@ -1,4 +1,4 @@
-from copy import copy
+import copy
 from typing import Dict, Tuple, List
 
 class MetaGraph:
@@ -74,15 +74,21 @@ class MetaGraph:
     @property
     def node_grouping(self) -> Dict[str, List[str]]:
         result = copy.copy(self._node_grouping)
+        exist_subgraph_nodes = []
+        for nodes in self._node_grouping.values():
+            exist_subgraph_nodes.extend(nodes)
         for node in self.nodes:
-            if node not in result:
+            if node not in exist_subgraph_nodes:
                 result.update({node: [node]})
         return result
     
     @property
     def link_grouping(self) -> Dict[str, List[str]]:
         result = copy.copy(self._link_grouping)
+        exist_subgraph_links = []
+        for links in self._link_grouping.values():
+            exist_subgraph_links.extend(links)
         for link in self.links:
-            if link not in result:
+            if link not in exist_subgraph_links:
                 result.update({link: [link]})
         return result

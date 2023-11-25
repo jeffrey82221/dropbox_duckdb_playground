@@ -194,7 +194,6 @@ metagraph = MetaGraph(
         """
     }
 )
-
 input_fs = LocalBackend('./data/canon/output/')
 output_fs = LocalBackend('./data/subgraph/output/')
 db = DuckDBBackend()
