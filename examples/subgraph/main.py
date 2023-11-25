@@ -3,8 +3,7 @@ from batch_framework.rdb import RDB
 from batch_framework.etl import ETLGroup
 from batch_framework.storage import PandasStorage
 from batch_framework.filesystem import FileSystem
-from .links import LinkExtractor
-from .nodes import NodeExtractor
+from .extractor import NodeExtractor, LinkExtractor
 from .validate import Validator
 from .metagraph import MetaGraph
 
@@ -12,20 +11,19 @@ class SubgraphExtractor(ETLGroup):
     """
     Extract Link and Node from Raw Tabular Data
     """
-    def __init__(self, metagraph: MetaGraph, db: RDB, input_fs: FileSystem, output_fs: FileSystem):
+    def __init__(self, input_ids: List[str], metagraph: MetaGraph, rdb: RDB, input_fs: FileSystem, output_fs: FileSystem):
+        self._input_ids = input_ids
         self._metagraph = metagraph
-        link_op = LinkExtractor(db, input_fs=input_fs, output_fs=output_fs)
-        node_op = NodeExtractor(db, input_fs=input_fs, output_fs=output_fs)
-        val_op = Validator(metagraph, PandasStorage(db))
+        link_op = LinkExtractor(
+            input_ids=input_ids, rdb=rdb, input_fs=input_fs, output_fs=output_fs)
+        node_op = NodeExtractor(
+            input_ids=input_ids, rdb=rdb, input_fs=input_fs, output_fs=output_fs)
+        val_op = Validator(metagraph, PandasStorage(rdb))
         super().__init__(link_op, node_op, val_op)
 
     @property
     def input_ids(self) -> List[str]:
-        return [
-            'latest_package',
-            'latest_requirement',
-            'latest_url'
-        ]
+        return self._input_ids
     
     @property
     def external_input_ids(self) -> List[str]:

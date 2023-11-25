@@ -9,4 +9,6 @@ pypi_table_loader = SimplePyPiCanonicalize(
     test_count=10000
 )
 if __name__ == '__main__':
+    # Total Package Count: 496743
+    # for i in range(50):
     pypi_table_loader.execute()

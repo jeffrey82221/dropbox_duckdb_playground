@@ -20,6 +20,7 @@ from typing import List, Dict, Tuple, Optional
 import requests
 import pandas as pd
 import vaex as vx
+import tqdm
 from batch_framework.etl import ObjProcessor
 from batch_framework.storage import PandasStorage
 
@@ -107,17 +108,15 @@ class LatestDownloader(ObjProcessor, LatestProcessor):
                 - etag: etag
         """
         results = []
-        for i, name in enumerate(names):
+        for i, name in enumerate(tqdm.tqdm(names, desc='get_new_package_records')):
             url = f"https://pypi.org/pypi/{name}/json"
             res = requests.get(url)
             if res.status_code == 404:
-                print(f'[_get_new_package_records] {name} latest skipped due to 404')
                 continue
             assert res.status_code == 200, f'response status code is {res.status_code}'
             latest = res.json()
             latest = self.process_latest(latest)
             etag = res.headers["ETag"]
-            print(f'[_get_new_package_records] {i+1}/{len(names)} {name} latest downloaded.')
             results.append((name, latest, etag))
         return pd.DataFrame.from_records(results, columns=['name', 'latest', 'etag'])
 
@@ -146,15 +145,17 @@ class LatestUpdator(ObjProcessor, LatestProcessor):
         """
         results = []
         total = len(latest_df)
-        for i, (name, etag) in enumerate(zip(latest_df.name.tolist(), latest_df.etag.tolist())):
+        name_etag_pipe = zip(latest_df.name.tolist(), latest_df.etag.tolist())
+        name_etag_pipe = tqdm.tqdm(name_etag_pipe, total=total, desc='get_updated_package_records')
+        for i, (name, etag) in enumerate(name_etag_pipe):
             result = self._update_with_etag(name, etag)
             if not isinstance(result, str):
                 latest, etag = result
                 latest = self.process_latest(latest)
                 results.append((name, latest, etag))
-                print(f'[_get_updated_package_records] {i+1}/{total} {name} Download')
-            else:
-                print(f'[_get_updated_package_records] {i}/{total} {name} skipped due to {result}')
+                # print(f'[_get_updated_package_records] {i+1}/{total} {name} Download')
+            # else:
+                # print(f'[_get_updated_package_records] {i}/{total} {name} skipped due to {result}')
         return pd.DataFrame.from_records(results, columns=['name', 'latest', 'etag'])
     
     def _update_with_etag(self, name: str, etag: str) -> Optional[Tuple[Dict, str]]:

@@ -28,7 +28,17 @@ metagraph = MetaGraph({
 input_fs = LocalBackend('./data/canon/output/')
 output_fs = LocalBackend('./data/subgraph/output/')
 db = DuckDBBackend()
-subgraph_extractor = SubgraphExtractor(metagraph, db, input_fs, output_fs)
+subgraph_extractor = SubgraphExtractor(
+    input_ids=[
+        'latest_package',
+        'latest_requirement',
+        'latest_url'
+    ],
+    metagraph=metagraph, 
+    rdb=db, 
+    input_fs=input_fs, 
+    output_fs=output_fs
+)
 
 if __name__ == '__main__':
     subgraph_extractor.execute(sequential=True)
