@@ -15,7 +15,8 @@ from batch_framework.filesystem import LocalBackend
 from subgraph.main import SubgraphExtractor
 from subgraph.metagraph import MetaGraph
 
-metagraph = MetaGraph({
+metagraph = MetaGraph(
+    subgraphs={
         'has_requirement': ('package', 'requirement'),
         'has_author': ('package', 'author'), 
         'has_maintainer': ('package', 'maintainer'), 
@@ -23,7 +24,15 @@ metagraph = MetaGraph({
         'has_docs_url': ('package', 'docs_url'), 
         'has_home_page': ('package', 'home_page'), 
         'has_project_url': ('package', 'project_url')
-    },  
+    },
+    node_grouping={
+        'package': ['package', 'requirement'],
+        'person': ['author', 'maintainer'],
+        'url': ['docs_url', 'home_page', 'project_url']
+    },
+    link_grouping={
+        'has_url': ['has_docs_url', 'has_home_page', 'has_project_url']
+    },
     input_ids=[
         'latest_package',
         'latest_requirement',
