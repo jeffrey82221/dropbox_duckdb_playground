@@ -32,8 +32,16 @@ class MatchLearnerBase(ERBase):
 
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[Dict]:
         self.prepare_training(inputs)
-        dedupe.console_label(self._deduper)
-        self._deduper.train()
+        while True:
+            dedupe.console_label(self._deduper)
+            self._deduper.train(recall=0.9, index_predicates=True)
+            print('Finish Training')
+            fields = [field for field in self._deduper.fingerprinter.index_fields]
+            print('FingerPrinting Fields:', fields)
+            if len(fields) > 0:
+                break
+            else:
+                continue
         # Generate JSON format Training Data
         updated_train = io.StringIO()
         self._deduper.write_training(updated_train)

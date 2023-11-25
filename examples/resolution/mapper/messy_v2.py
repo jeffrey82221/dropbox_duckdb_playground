@@ -22,7 +22,7 @@ class MessyMatcher(ETLGroup):
     Input Messy Node Table 
     Output a Messy->Cluster Mapping Table
     """
-    def __init__(self, meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB, pairing_worker_count: int = 50, threshold=0.5):
+    def __init__(self, meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB, pairing_worker_count: int = 10, threshold=0.5):
         self._mapping_fs = mapping_fs
         self._partition_fs = LocalBackend(f'{self._mapping_fs._directory}partition/')
         messy_feature_engineer = MessyFeatureEngineer(
@@ -170,15 +170,25 @@ class MessyBlocker(MessyOnly, MatcherBase):
 
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
         table = inputs[0]
-        for field in self._deduper.fingerprinter.index_fields:
+        print('input size of messy blocker:', len(table))
+        fields = [field for field in self._deduper.fingerprinter.index_fields]
+        assert len(fields) > 0, 'index fields list is empty'
+        for field in fields:
+            print('fingerprinting field:', field)
             field_data = tuple(table[field].unique().tolist())
             self._deduper.fingerprinter.index(field_data, field)
         b_data = self._deduper.fingerprinter(self.to_fingerprinter(table))
-        result = pd.read_csv(Readable(b_data), names = ['block_key', 'messy_id'], header=None)
-        print(result)
+        result = pd.read_csv(
+            Readable(b_data), 
+            names = ['block_key', 'messy_id'], 
+            header=None
+        )
+        print('result size of messy blocker:', len(result))
+        assert len(result) > 0, 'messy block result size = 0'
         origin_node_ids = set(inputs[0].node_id.tolist())
         processed_node_ids = set(result.messy_id.tolist())
         print('common node ids:', len(origin_node_ids & processed_node_ids))
+        assert len(origin_node_ids & processed_node_ids) > 0, 'messy block size = 0'
         return [result]
 
     def to_fingerprinter(self, table: pd.DataFrame) -> List[Dict]:
@@ -277,14 +287,27 @@ class MessyPairSelector(MessyOnly, MatcherBase):
     
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
         table = inputs[0]
-        scores = list(map(lambda x: [x[0][0], x[0][1], x[1]], filter(lambda x: x[1] > self._threshold, 
-                                                 tqdm.tqdm(self._deduper.score(self.organize_pairs(table.to_dict('records'))), 
-                                                           total=len(table), desc='scoring'))))
+        print('[MessyPairSelector] table size:', len(table))
+        scores = list(map(
+            lambda x: [x[0][0], x[0][1], x[1]], 
+            filter(
+                lambda x: x[1] > self._threshold, 
+                    tqdm.tqdm(
+                        self._deduper.score(
+                            self.organize_pairs(
+                                table.to_dict('records')
+                            )
+                        ),
+                        total=len(table), 
+                        desc='scoring'
+                    )
+                )
+            )
+        )
         print('Finish Score Calculation of Size:', len(scores))
         result = pd.DataFrame(scores, columns=['from', 'to', 'score'])
-        # result['from'] = result['from'].map(int)
-        # result['to'] = result['to'].map(int)
         return [result]
+    
         
     def organize_pairs(self, records: Iterator[Dict]) -> Iterator[Tuple[Dict, Dict]]:
         _a_fields = self.a_fields

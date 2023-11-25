@@ -4,6 +4,7 @@ Build Flow of:
     - Define relation between link & node of subgraph
 - [ ] Entity Resolution
     - Define mapping of nodes between two subgraph
+    - Take subgraph as input such that related links ID can also be clean up. 
 - [ ] Graph Merging
     - Define nodes that should be merged. 
     - Include ERMeta to build a hidden flow start from cleaned nodes. 
