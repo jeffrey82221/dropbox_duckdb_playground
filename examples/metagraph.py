@@ -26,9 +26,10 @@ class MetaGraph:
                  node_grouping: Dict[str, List[str]], 
                  link_grouping: Dict[str, List[str]], 
                  input_ids: List[str], 
-                 node_sqls: Dict[str, str], 
-                 node_grouping_sqls: Dict[str, str], 
-                 link_sqls: Dict[str, str]
+                 node_sqls: Dict[str, str],
+                 link_sqls: Dict[str, str],
+                 node_grouping_sqls: Dict[str, str]=dict(), 
+                 link_grouping_sqls: Dict[str, str]=dict(),
                 ):
         self._subgraphs = subgraphs
         self._node_grouping = node_grouping
@@ -41,6 +42,7 @@ class MetaGraph:
         self.link_sqls = link_sqls
         self.__check_link_sqls()
         self.__node_grouping_sqls = node_grouping_sqls
+        self.__link_grouping_sqls = link_grouping_sqls
 
     def __check_subgraph_nodes(self):
         subgraph_nodes = self.nodes
@@ -75,14 +77,31 @@ class MetaGraph:
     @property
     def node_grouping_sqls(self) -> Dict[str, str]:
         result = dict()
-        for key in self.__node_grouping_sqls:
-            result[f'{key}_final'] = self.__node_grouping_sqls[key]
+        for key in self.node_grouping:
+            if key in self.__node_grouping_sqls:
+                result[f'{key}_final'] = self.__node_grouping_sqls[key]
+            else:
+                assert len(self.node_grouping[key]) == 1, 'default node grouping should be 1-1 mapping'
+                assert self.node_grouping[key][0] == key, 'default node grouping source node should equals target node'
+                result[f'{key}_final'] = f"SELECT * FROM {key}"
         return result
     
     @property
     def final_links(self) -> List[str]:
-        return [f'{l}_final' for l in self.link_grouping]
+        return [key for key in self.link_grouping_sqls]
 
+    @property
+    def link_grouping_sqls(self) -> Dict[str, str]:
+        result = dict()
+        for key in self.link_grouping:
+            if key in self.__link_grouping_sqls:
+                result[f'{key}_final'] = self.__link_grouping_sqls[key]
+            else:
+                assert len(self.link_grouping[key]) == 1, 'default link grouping should be 1-1 mapping'
+                assert self.link_grouping[key][0] == key, 'default link grouping source link should equals target link'
+                result[f'{key}_final'] = f"SELECT * FROM {key}"
+        return result
+    
     @property
     def nodes(self) -> List[str]:
         results = []
