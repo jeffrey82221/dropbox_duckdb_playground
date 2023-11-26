@@ -222,9 +222,6 @@ metagraph = MetaGraph(
         """
     }
 )
-for key, value in metagraph.link_grouping_sqls.items():
-    print(key)
-    print(value)
 
 subgraph_extractor = SubgraphExtractor(
     metagraph=metagraph, 

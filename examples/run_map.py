@@ -27,7 +27,6 @@ model_fs = LocalBackend('./data/model/')
 mapping_fs = LocalBackend('./data/mapping/')
 meta = ERMeta(
     messy_node='requirement',
-    canon_node='package',
     dedupe_fields=[
         {'field': 'full_name', 'type': 'String'},
         {'field': 'before_whitespace', 'type': 'Exact'},
@@ -40,6 +39,7 @@ meta = ERMeta(
         'before_upper_bracket': record['name'].split('[')[0].split('(')[0],
         'before_marks': record['name'].split('<')[0].split('>')[0].split('=')[0].split('~')[0]
     },
+    canon_node='package',
     canon_lambda=lambda record: {
         'full_name': record['name'],
         'before_whitespace': record['name'],
