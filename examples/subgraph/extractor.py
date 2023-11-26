@@ -2,7 +2,7 @@ from typing import List
 from batch_framework.etl import SQLExecutor
 from batch_framework.rdb import RDB
 from batch_framework.filesystem import FileSystem
-from .metagraph import MetaGraph
+from metagraph import MetaGraph
 
 __all__ = ['LinkExtractor', 'NodeExtractor']
 

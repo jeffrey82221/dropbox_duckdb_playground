@@ -6,7 +6,7 @@ import pandas as pd
 from batch_framework.etl import ObjProcessor
 from batch_framework.storage import PandasStorage
 from batch_framework.etl import ETLGroup
-from .metagraph import MetaGraph
+from metagraph import MetaGraph
 
 __all__ = ['Validator']
 

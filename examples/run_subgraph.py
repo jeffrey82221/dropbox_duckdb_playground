@@ -9,11 +9,11 @@ Build Flow of:
     - Define nodes that should be merged. 
     - Include ERMeta to build a hidden flow start from cleaned nodes. 
 """
-
 from batch_framework.rdb import DuckDBBackend
 from batch_framework.filesystem import LocalBackend
-from subgraph.main import SubgraphExtractor
-from subgraph.metagraph import MetaGraph
+from subgraph import SubgraphExtractor
+from metagraph import MetaGraph
+from group.node import NodeGrouper
 
 metagraph = MetaGraph(
     subgraphs={
@@ -123,6 +123,98 @@ metagraph = MetaGraph(
         AND url <> 'UNKNOWN'
         """
     },
+    node_grouping_sqls={
+        'package': """
+        WITH
+            node_table1 AS (
+                SELECT node_id FROM package
+            ),
+            node_table2 AS (
+                SELECT node_id FROM requirement
+            ),
+            node_ids AS (
+                SELECT DISTINCT ON (node_id)
+                    node_id
+                FROM (
+                    SELECT node_id FROM node_table1
+                    UNION
+                    SELECT node_id FROM node_table2
+                )
+            )
+        SELECT 
+            t0.node_id,
+            COALESCE(t1.name, t2.name) AS name,
+            t1.requires_python,
+            t1.version,
+            t1.keywords,
+            t1.num_releases
+        FROM node_ids AS t0
+        LEFT JOIN package AS t1
+        ON t0.node_id = t1.node_id
+        LEFT JOIN requirement AS t2
+        ON t0.node_id = t2.node_id
+        """,
+        'person': """
+        WITH
+            node_table1 AS (
+                SELECT node_id FROM author
+            ),
+            node_table2 AS (
+                SELECT node_id FROM maintainer
+            ),
+            node_ids AS (
+                SELECT DISTINCT ON (node_id)
+                    node_id
+                FROM (
+                    SELECT node_id FROM node_table1
+                    UNION
+                    SELECT node_id FROM node_table2
+                )
+            )
+        SELECT 
+            t0.node_id,
+            COALESCE(t1.name, t2.name) AS name,
+            COALESCE(t1.email, t2.email) AS email
+        FROM node_ids AS t0
+        LEFT JOIN author AS t1
+        ON t0.node_id = t1.node_id
+        LEFT JOIN maintainer AS t2
+        ON t0.node_id = t2.node_id
+        """,
+        "url": """
+        WITH
+            node_table1 AS (
+                SELECT node_id FROM docs_url
+            ),
+            node_table2 AS (
+                SELECT node_id FROM home_page
+            ),
+            node_table3 AS (
+                SELECT node_id FROM project_url
+            ),
+            node_ids AS (
+                SELECT DISTINCT ON (node_id)
+                    node_id
+                FROM (
+                    SELECT node_id FROM node_table1
+                    UNION
+                    SELECT node_id FROM node_table2
+                    UNION
+                    SELECT node_id FROM node_table3
+                )
+            )
+        SELECT 
+            t0.node_id,
+            COALESCE(t1.url, t2.url, t3.url) AS url
+        FROM node_ids AS t0
+        LEFT JOIN docs_url AS t1
+        ON t0.node_id = t1.node_id
+        LEFT JOIN home_page AS t2
+        ON t0.node_id = t2.node_id
+        LEFT JOIN project_url AS t3
+        ON t0.node_id = t3.node_id
+        """
+    },
     link_sqls={
         # Has Requirement Link
         'has_requirement': """
@@ -194,15 +286,18 @@ metagraph = MetaGraph(
         """
     }
 )
-input_fs = LocalBackend('./data/canon/output/')
-output_fs = LocalBackend('./data/subgraph/output/')
-db = DuckDBBackend()
 subgraph_extractor = SubgraphExtractor(
     metagraph=metagraph, 
-    rdb=db, 
-    input_fs=input_fs, 
-    output_fs=output_fs
+    rdb=DuckDBBackend(), 
+    input_fs=LocalBackend('./data/canon/output/'), 
+    output_fs=LocalBackend('./data/subgraph/output/')
 )
-
+node_grouper = NodeGrouper(
+    metagraph=metagraph,
+    rdb=DuckDBBackend(),
+    input_fs=LocalBackend('./data/subgraph/output/'),
+    output_fs=LocalBackend('./data/graph/')
+)
 if __name__ == '__main__':
     subgraph_extractor.execute(sequential=True)
+    node_grouper.execute()
