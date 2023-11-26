@@ -1,7 +1,8 @@
 """
 TODO:
-- [ ] Add ID convertor / Links to Mapping Generator 
+- [ ] Add ID convertor / Links to Mapping Generator
     -> Build Entity Resolution Class
+- [ ] Enable no-canon workflow in mapping generator
 """
 from typing import List
 import os

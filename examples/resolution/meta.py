@@ -1,9 +1,9 @@
 """
 TODO:
-    - [ ] Enable Not Provide of Canon Node & Canon Lambda 
-    - [ ] Adding links / nodes property convertor to MetaGraph class
+- [X] Enable Not Provide of Canon Node & Canon Lambda 
+- [ ] Adding links / nodes property convertion to MetaGraph class
 """
-from typing import List, Dict, Set, Callable, Optional, Tuple
+from typing import List, Dict, Callable, Optional
 from metagraph import MetaGraph
 
 __all__ = ['ERMeta']
@@ -24,23 +24,17 @@ class ERMeta:
         self.canon_node = canon_node
         self.canon_lambda = canon_lambda
 
-    def combine_with_metagraph(self, metagraph: MetaGraph) -> MetaGraph:
-        self._subgraphs = metagraph._subgraphs
-        
-
     @property
-    def source_columns(self) -> Set[Tuple[str, str]]:
+    def has_canon(self) -> bool:
+        return self.canon_node is not None
+
+    def attach_to_metagraph(self, metagraph: MetaGraph) -> MetaGraph:
         """
-        Return:
-            key: name of node or link that should be cleaned
-            value: column name of the node/link table that should be cleaned
+        Attach ER to Metagraph
+
+        In detail, 
+            1. Read subgraphs and determine which node or link and which columns should be ID converted.
+            2. Add IDConvertor to a class dictionary (key: output ids).
+            3. Deep copy metagraph and change its original links/nodes property to new links/nodes property.
         """
-        results = []
-        for link, (src_node, target_node) in self._subgraphs.items():
-            if src_node == self.messy_node:
-                results.append((src_node, 'node_id'))
-                results.append((link, 'from_id'))
-            if target_node == self.messy_node:
-                results.append((target_node, 'node_id'))
-                results.append((link, 'to_id'))
-        return set(results)
+        self._subgraphs = metagraph._subgraphs

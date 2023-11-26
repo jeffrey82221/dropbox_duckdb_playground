@@ -1,5 +1,6 @@
 """
 Build Flow of:
+
 - [X] Subgraph Extraction
     - Define relation between link & node of subgraph
 - [ ] Entity Resolution
@@ -8,6 +9,10 @@ Build Flow of:
 - [X] Graph Merging
     - Define nodes that should be merged. 
     - Include ERMeta to build a hidden flow start from cleaned nodes. 
+- [ ] Decompose GroupingMeta and MetaGraph. 
+- [ ] ERMeta(s) should take subgraphs as __init__ input for finding messy link/node.
+- [ ] ERMeta when attach with a GroupingMeta, should generate related IDConvertor(s).
+    and produce a revised GroupingMeta. 
 """
 from batch_framework.rdb import DuckDBBackend
 from batch_framework.filesystem import LocalBackend
