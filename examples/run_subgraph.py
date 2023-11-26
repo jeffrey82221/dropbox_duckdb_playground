@@ -30,8 +30,34 @@ metagraph = MetaGraph(
         'person': ['author', 'maintainer'],
         'url': ['docs_url', 'home_page', 'project_url']
     },
+    node_grouping_sqls={
+        'package': """
+            t0.node_id,
+            COALESCE(t1.name, t2.name) AS name,
+            t1.requires_python,
+            t1.version,
+            t1.keywords,
+            t1.num_releases
+        """,
+        'person': """
+            t0.node_id,
+            COALESCE(t1.name, t2.name) AS name,
+            COALESCE(t1.email, t2.email) AS email
+        """,
+        "url": """
+            t0.node_id,
+            COALESCE(t1.url, t2.url, t3.url) AS url
+        """
+    },
     link_grouping={
-        'has_url': ['has_docs_url', 'has_home_page', 'has_project_url']
+        'has_url': ['has_project_url', 'has_docs_url',  'has_home_page']
+    },
+    link_grouping_sqls = {
+        'has_url': """
+            t0.from_id,
+            t0.to_id,
+            COALESCE(t1.url_type, t2.url_type, t3.url_type) AS url_type
+        """
     },
     input_ids=[
         'latest_package',
@@ -123,77 +149,6 @@ metagraph = MetaGraph(
         AND url <> 'UNKNOWN'
         """
     },
-    node_grouping_sqls={
-        'package': """
-        WITH
-            node_ids AS (
-                SELECT DISTINCT ON (node_id)
-                    node_id
-                FROM (
-                    SELECT node_id FROM package
-                    UNION
-                    SELECT node_id FROM requirement
-                )
-            )
-        SELECT 
-            t0.node_id,
-            COALESCE(t1.name, t2.name) AS name,
-            t1.requires_python,
-            t1.version,
-            t1.keywords,
-            t1.num_releases
-        FROM node_ids AS t0
-        LEFT JOIN package AS t1
-        ON t0.node_id = t1.node_id
-        LEFT JOIN requirement AS t2
-        ON t0.node_id = t2.node_id
-        """,
-        'person': """
-        WITH
-            node_ids AS (
-                SELECT DISTINCT ON (node_id)
-                    node_id
-                FROM (
-                    SELECT node_id FROM author
-                    UNION
-                    SELECT node_id FROM maintainer
-                )
-            )
-        SELECT 
-            t0.node_id,
-            COALESCE(t1.name, t2.name) AS name,
-            COALESCE(t1.email, t2.email) AS email
-        FROM node_ids AS t0
-        LEFT JOIN author AS t1
-        ON t0.node_id = t1.node_id
-        LEFT JOIN maintainer AS t2
-        ON t0.node_id = t2.node_id
-        """,
-        "url": """
-        WITH
-            node_ids AS (
-                SELECT DISTINCT ON (node_id)
-                    node_id
-                FROM (
-                    SELECT node_id FROM docs_url
-                    UNION
-                    SELECT node_id FROM home_page
-                    UNION
-                    SELECT node_id FROM project_url
-                )
-            )
-        SELECT 
-            t0.node_id,
-            COALESCE(t1.url, t2.url, t3.url) AS url
-        FROM node_ids AS t0
-        LEFT JOIN docs_url AS t1
-        ON t0.node_id = t1.node_id
-        LEFT JOIN home_page AS t2
-        ON t0.node_id = t2.node_id
-        LEFT JOIN project_url AS t3
-        ON t0.node_id = t3.node_id
-        """
-    },
     link_sqls={
         # Has Requirement Link
         'has_requirement': """
@@ -264,33 +219,6 @@ metagraph = MetaGraph(
         FROM latest_url
         WHERE url IS NOT NULL
         AND url <> 'UNKNOWN'
-        """
-    },
-    link_grouping_sqls = {
-        'has_url': """
-        WITH
-            from_to_ids AS (
-                SELECT DISTINCT ON (from_id, to_id)
-                    from_id, to_id
-                FROM (
-                    SELECT * FROM has_docs_url
-                    UNION
-                    SELECT * FROM has_home_page
-                    UNION
-                    SELECT * FROM has_project_url
-                )
-            )
-        SELECT 
-            t0.from_id,
-            t0.to_id,
-            COALESCE(t3.url_type, t1.url_type, t2.url_type) 
-        FROM from_to_ids AS t0
-        LEFT JOIN has_docs_url AS t1
-        ON t0.from_id = t1.from_id AND t0.to_id = t1.to_id
-        LEFT JOIN has_home_page AS t2
-        ON t0.from_id = t2.from_id AND t0.to_id = t2.to_id
-        LEFT JOIN has_project_url AS t3
-        ON t0.from_id = t3.from_id AND t0.to_id = t3.to_id
         """
     }
 )
