@@ -1,69 +1,7 @@
 import copy
 from typing import Dict, Tuple, List
+from group import GroupingMeta
 
-class SqlBuilder:
-    """
-    Build Common Sql patterns for Node / Link Grouping
-    """
-    @staticmethod
-    def build_node_join_sql(column_sql: str, node_names: List[str]) -> str:
-        pop_sql = SqlBuilder.build_node_pop_sql(node_names)
-        left_join_sql = '\n'.join([
-            f'LEFT JOIN {node} AS t{i+1} ON t0.node_id = t{i+1}.node_id'
-            for i, node in enumerate(node_names)
-        ])
-        result = f"""
-        WITH pop AS (
-            {pop_sql}
-        )
-        SELECT 
-            {column_sql}
-        FROM pop AS t0
-            {left_join_sql}
-        """
-        return result
-
-    @staticmethod
-    def build_node_pop_sql(node_names: List[str]) -> str:
-        union_table = 'UNION\n'.join([f'SELECT node_id FROM {nm}\n' for nm in node_names])
-        result = f"""
-        SELECT DISTINCT ON (node_id)
-            node_id
-        FROM (
-            {union_table}
-        )
-        """
-        return result
-
-    @staticmethod
-    def build_link_join_sql(column_sql: str, link_names: List[str]) -> str:
-        pop_sql = SqlBuilder.build_link_pop_sql(link_names)
-        left_join_sql = '\n'.join([
-            f'LEFT JOIN {link} AS t{i+1} ON t0.from_id = t{i+1}.from_id AND t0.to_id = t{i+1}.to_id'
-            for i, link in enumerate(link_names)
-        ])
-        result = f"""
-        WITH pop AS (
-            {pop_sql}
-        )
-        SELECT 
-            {column_sql}
-        FROM pop AS t0
-            {left_join_sql}
-        """
-        return result
-
-    @staticmethod
-    def build_link_pop_sql(link_names: List[str]) -> str:
-        union_table = 'UNION\n'.join([f'SELECT from_id, to_id FROM {nm}\n' for nm in link_names])
-        result = f"""
-        SELECT DISTINCT ON (from_id, to_id)
-            from_id, to_id
-        FROM (
-            {union_table}
-        )
-        """
-        return result
 
 class MetaGraph:
     """
@@ -133,39 +71,6 @@ class MetaGraph:
             assert link in subgraph_links, f'link `{link}` of link_sqls is not defined in links of subgraphs ({subgraph_links})'
         for link in subgraph_links:
             assert link in self.link_sqls, f'sql of subgraph link `{link}` is not provided'
-
-    @property
-    def final_nodes(self) -> List[str]:
-        return [key for key in self.node_grouping_sqls]
-    
-    @property
-    def node_grouping_sqls(self) -> Dict[str, str]:
-        result = dict()
-        for key in self.node_grouping:
-            if key in self.__node_grouping_sqls:
-                result[f'{key}_final'] = SqlBuilder.build_node_join_sql(self.__node_grouping_sqls[key], self.node_grouping[key])
-            else:
-                assert len(self.node_grouping[key]) == 1, 'default node grouping should be 1-1 mapping'
-                assert self.node_grouping[key][0] == key, 'default node grouping source node should equals target node'
-                result[f'{key}_final'] = f"SELECT * FROM {key}"
-        return result
-    
-        
-    @property
-    def final_links(self) -> List[str]:
-        return [key for key in self.link_grouping_sqls]
-    
-    @property
-    def link_grouping_sqls(self) -> Dict[str, str]:
-        result = dict()
-        for key in self.link_grouping:
-            if key in self.__link_grouping_sqls:
-                result[f'{key}_final'] = SqlBuilder.build_link_join_sql(self.__link_grouping_sqls[key], self.link_grouping[key])
-            else:
-                assert len(self.link_grouping[key]) == 1, 'default link grouping should be 1-1 mapping'
-                assert self.link_grouping[key][0] == key, 'default link grouping source link should equals target link'
-                result[f'{key}_final'] = f"SELECT * FROM {key}"
-        return result
     
     @property
     def nodes(self) -> List[str]:
@@ -178,6 +83,15 @@ class MetaGraph:
     @property
     def links(self) -> List[str]:
         return list(set([link for link in self._subgraphs.keys()]))
+    
+    @property
+    def grouping_meta(self) -> GroupingMeta:
+        return GroupingMeta(
+            self.node_grouping,
+            self.link_grouping,
+            self.__node_grouping_sqls,
+            self.__link_grouping_sqls
+        )
     
     @property
     def node_grouping(self) -> Dict[str, List[str]]:
@@ -200,3 +114,5 @@ class MetaGraph:
             if link not in exist_subgraph_links:
                 result.update({link: [link]})
         return result
+    
+    
