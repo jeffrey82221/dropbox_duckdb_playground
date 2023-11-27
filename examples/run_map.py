@@ -20,12 +20,10 @@ from resolution import (
     CanonMatchLearner, MessyMatchLearner, 
     MappingGenerator
 )
+from meta import subgraphs
 
-subgraph_fs = LocalBackend('./data/subgraph/output/')
-train_fs = LocalBackend('./data/train/')
-model_fs = LocalBackend('./data/model/')
-mapping_fs = LocalBackend('./data/mapping/')
 meta = ERMeta(
+    subgraphs=subgraphs,
     messy_node='requirement',
     dedupe_fields=[
         {'field': 'full_name', 'type': 'String'},
@@ -47,6 +45,12 @@ meta = ERMeta(
         'before_marks': record['name']
     }
 )
+
+subgraph_fs = LocalBackend('./data/subgraph/output/')
+train_fs = LocalBackend('./data/train/')
+model_fs = LocalBackend('./data/model/')
+mapping_fs = LocalBackend('./data/mapping/')
+
 canon_learner = CanonMatchLearner(
     meta,
     PandasStorage(subgraph_fs), 

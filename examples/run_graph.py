@@ -9,27 +9,19 @@ Build Flow of:
 - [X] Graph Merging
     - Define nodes that should be merged. 
     - Include ERMeta to build a hidden flow start from cleaned nodes. 
-- [ ] Decompose GroupingMeta and MetaGraph. 
-- [ ] ERMeta(s) should take subgraphs as __init__ input for finding messy link/node.
+- [X] Decompose GroupingMeta and MetaGraph. 
+- [X] ERMeta(s) should take subgraphs as __init__ input for finding messy link/node.
 - [ ] ERMeta when attach with a GroupingMeta, should generate related IDConvertor(s).
-    and produce a revised GroupingMeta. 
+    and produce a revised GroupingMeta.
 """
 from batch_framework.rdb import DuckDBBackend
 from batch_framework.filesystem import LocalBackend
 from subgraph import SubgraphExtractor
 from metagraph import MetaGraph
 from group import NodeGrouper, LinkGrouper
-
+from meta import subgraphs
 metagraph = MetaGraph(
-    subgraphs={
-        'has_requirement': ('package', 'requirement'),
-        'has_author': ('package', 'author'), 
-        'has_maintainer': ('package', 'maintainer'), 
-        'has_license': ('package', 'license'), 
-        'has_docs_url': ('package', 'docs_url'), 
-        'has_home_page': ('package', 'home_page'), 
-        'has_project_url': ('package', 'project_url')
-    },
+    subgraphs=subgraphs,
     node_grouping={
         'package': ['package', 'requirement'],
         'person': ['author', 'maintainer'],

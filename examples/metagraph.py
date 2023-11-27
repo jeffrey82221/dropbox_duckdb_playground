@@ -46,6 +46,9 @@ class MetaGraph:
         self.__node_grouping_sqls = node_grouping_sqls
         self.__link_grouping_sqls = link_grouping_sqls
 
+    def subgraphs(self):
+        return self._subgraphs
+    
     def __check_subgraph_nodes(self):
         subgraph_nodes = self.nodes
         for _, nodes in self._node_grouping.items():

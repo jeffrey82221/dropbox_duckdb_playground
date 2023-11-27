@@ -3,7 +3,7 @@ TODO:
 - [X] Enable Not Provide of Canon Node & Canon Lambda 
 - [ ] Adding links / nodes property convertion to MetaGraph class
 """
-from typing import List, Dict, Callable, Optional
+from typing import List, Dict, Callable, Optional, Tuple
 from metagraph import MetaGraph
 
 __all__ = ['ERMeta']
@@ -12,12 +12,14 @@ class ERMeta:
     """Data Class holding Metadata about Entity Resolution
     """
     def __init__(self, 
+                 subgraphs: Dict[str, Tuple[str, str]], 
                  messy_node: str, 
                  dedupe_fields: List[Dict[str, str]], 
                  messy_lambda: Callable=lambda record: record, 
                  canon_node: Optional[str] = None, 
                  canon_lambda: Callable=lambda record: record
         ):
+        self.subgraphs=subgraphs
         self.messy_node = messy_node
         self.dedupe_fields = dedupe_fields
         self.messy_lambda = messy_lambda
