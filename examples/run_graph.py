@@ -3,7 +3,7 @@ Build Flow of:
 
 - [X] Subgraph Extraction
     - Define relation between link & node of subgraph
-- [ ] Entity Resolution
+- [X] Entity Resolution
     - Define mapping of nodes between two subgraph
     - Take subgraph as input such that related links ID can also be clean up. 
 - [X] Graph Merging
@@ -11,7 +11,7 @@ Build Flow of:
     - Include ERMeta to build a hidden flow start from cleaned nodes. 
 - [X] Decompose GroupingMeta and MetaGraph. 
 - [X] ERMeta(s) should take subgraphs as __init__ input for finding messy link/node.
-- [ ] ERMeta when attach with a GroupingMeta, should generate related IDConvertor(s).
+- [X] ERMeta when attach with a GroupingMeta, should generate related IDConvertor(s).
     and produce a revised GroupingMeta.
 """
 from batch_framework.rdb import DuckDBBackend
@@ -19,6 +19,10 @@ from batch_framework.filesystem import LocalBackend
 from subgraph import SubgraphExtractor
 from metagraph import MetaGraph
 from group import NodeGrouper, LinkGrouper
+from resolution import (
+    ERMeta,
+    MappingGenerator
+)
 from meta import subgraphs
 metagraph = MetaGraph(
     subgraphs=subgraphs,
@@ -219,6 +223,32 @@ metagraph = MetaGraph(
         """
     }
 )
+er_meta = ERMeta(
+    subgraphs=subgraphs,
+    messy_node='requirement',
+    dedupe_fields=[
+        {'field': 'full_name', 'type': 'String'},
+        {'field': 'before_whitespace', 'type': 'Exact'},
+        {'field': 'before_upper_bracket', 'type': 'Exact'},
+        {'field': 'before_marks', 'type': 'Exact'}
+    ],
+    messy_lambda=lambda record: {
+        'full_name': record['name'],
+        'before_whitespace': record['name'].split(' ')[0].split(';')[0],
+        'before_upper_bracket': record['name'].split('[')[0].split('(')[0],
+        'before_marks': record['name'].split('<')[0].split('>')[0].split('=')[0].split('~')[0]
+    },
+    canon_node='package',
+    canon_lambda=lambda record: {
+        'full_name': record['name'],
+        'before_whitespace': record['name'],
+        'before_upper_bracket': record['name'],
+        'before_marks': record['name']
+    }
+)
+grouping_meta = metagraph.grouping_meta
+er_meta.alter_grouping_way(grouping_meta)
+
 subgraph_extractor = SubgraphExtractor(
     metagraph=metagraph, 
     rdb=DuckDBBackend(), 
@@ -226,19 +256,28 @@ subgraph_extractor = SubgraphExtractor(
     output_fs=LocalBackend('./data/subgraph/output/')
 )
 
+mapping = MappingGenerator(
+    er_meta,
+    LocalBackend('./data/subgraph/output/'),
+    LocalBackend('./data/mapping/'),
+    LocalBackend('./data/model/'),
+    DuckDBBackend()
+)
+
 node_grouper = NodeGrouper(
-    meta=metagraph.grouping_meta,
+    meta=grouping_meta,
     rdb=DuckDBBackend(),
     input_fs=LocalBackend('./data/subgraph/output/'),
     output_fs=LocalBackend('./data/graph/nodes/')
 )
 link_grouper = LinkGrouper(
-    meta=metagraph.grouping_meta,
+    meta=grouping_meta,
     rdb=DuckDBBackend(),
     input_fs=LocalBackend('./data/subgraph/output/'),
     output_fs=LocalBackend('./data/graph/links/')
 )
 if __name__ == '__main__':
     subgraph_extractor.execute(sequential=True)
-    node_grouper.execute()
-    link_grouper.execute()
+    # mapping.execute(sequential=True)
+    # node_grouper.execute()
+    # link_grouper.execute()

@@ -16,7 +16,7 @@ from batch_framework.storage import PandasStorage, JsonStorage
 from batch_framework.filesystem import LocalBackend
 from batch_framework.rdb import DuckDBBackend
 from resolution import (
-    ERMeta, 
+    ERMeta,
     CanonMatchLearner, MessyMatchLearner, 
     MappingGenerator
 )

@@ -10,7 +10,6 @@ TODO:
 from batch_framework.etl import SQLExecutor
 from batch_framework.filesystem import FileSystem
 from batch_framework.rdb import RDB
-from .meta import ERMeta
 
 __all__ = ['IDConvertor']
 
@@ -18,30 +17,31 @@ class IDConvertor(SQLExecutor):
     """
     Converting ID of Messy Node to Cleaned Node ID
     """
-    def __init__(self, meta: ERMeta, db: RDB, input_fs: FileSystem, output_fs: FileSystem):
-        self._meta = meta
+    def __init__(self, messy_node: str, source_item: str, target_column: str, db: RDB, input_fs: FileSystem, output_fs: FileSystem):
+        self._messy_node = messy_node
+        self._source_item = source_item
+        self._target_column = target_column
         super().__init__(db, input_fs=input_fs, output_fs=output_fs)
         
     @property
     def input_ids(self):
         return [
-            self._meta.messy_node,
-            f'mapper_{self._meta.messy_node}_clean'
+            self._source_item,
+            f'mapper_{self._messy_node}_clean'
         ]
 
     @property
     def output_ids(self):
-        return [self._meta.messy_node + '_clean']
-    
+        return [self._source_item + 'Q']
     
     def sqls(self):
         return {
-            self._meta.messy_node + '_clean': f"""
+            self.output_ids[0]: f"""
                 SELECT
-                    t2.new_id AS node_id,
-                    t1.* EXCLUDE (node_id)
-                FROM {self._meta.messy_node} AS t1
-                LEFT JOIN mapper_{self._meta.messy_node}_clean AS t2
-                ON t1.node_id = t2.messy_id
+                    t2.new_id AS {self._target_column},
+                    t1.* EXCLUDE ({self._target_column})
+                FROM {self._source_item} AS t1
+                LEFT JOIN mapper_{self._messy_node}_clean AS t2
+                ON t1.{self._target_column} = t2.messy_id
             """
         }

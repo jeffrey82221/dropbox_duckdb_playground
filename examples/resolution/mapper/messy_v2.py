@@ -52,12 +52,6 @@ class MessyMatcher(ETLGroup):
             PandasStorage(self._partition_fs),
             has_external_input=False
         )
-        # messy_node_validation = MessyEntityMapValidate(
-        #     meta, 
-        #     PandasStorage(mapping_fs), 
-        #     PandasStorage(mapping_fs),
-        #     model_fs=None
-        # )
         messy_cluster = MessyClusterer(
             meta,
             PandasStorage(mapping_fs), 

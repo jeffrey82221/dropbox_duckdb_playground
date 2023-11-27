@@ -80,6 +80,26 @@ class GroupingMeta:
             self.__node_grouping_sqls = node_grouping_sqls
             self.__link_grouping_sqls = link_grouping_sqls
     
+    def alter_input_node(self, node_name: str, target_name: str):
+        for key, nodes in self.node_grouping.items():
+            new_nodes = []
+            for node in nodes:
+                if node == node_name:
+                    new_nodes.append(target_name)
+                else:
+                    new_nodes.append(node)
+            self.node_grouping[key] = new_nodes
+
+    def alter_input_link(self, link_name: str, target_name: str):
+        for key, links in self.link_grouping.items():
+            new_links = []
+            for link in links:
+                if link == link_name:
+                    new_links.append(target_name)
+                else:
+                    new_links.append(link)
+            self.link_grouping[key] = new_links
+
     @property
     def input_nodes(self) -> List[str]:
         result = []

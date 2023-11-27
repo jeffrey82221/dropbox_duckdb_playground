@@ -37,26 +37,30 @@ class MappingGenerator(ETLGroup):
             rdb,
             workspace_fs=mapping_fs
         )
-        id_convertor = IDConvertor(
-            meta,
-            rdb,
-            subgraph_fs,
-            subgraph_fs
-        )
-        super().__init__(
+        etl_layers = [
             canon_matcher,
             messy_matcher,
-            mapping_combiner,
-            id_convertor
+            mapping_combiner
+        ]
+        for item, column in meta.id_convertion_messy_items:
+            etl_layers.append(
+                IDConvertor(
+                    meta.messy_node,
+                    item,
+                    column,
+                    rdb,
+                    subgraph_fs,
+                    subgraph_fs
+                )
+            )
+        super().__init__(
+            *etl_layers
         )
         self._meta = meta
 
     @property
     def input_ids(self):
-        return [
-            self._meta.messy_node,
-            self._meta.canon_node,
-        ]
+        return self._meta.input_ids
 
     @property
     def external_input_ids(self) -> List[str]:
@@ -64,9 +68,7 @@ class MappingGenerator(ETLGroup):
     
     @property
     def output_ids(self):
-        return [
-            self._meta.messy_node + '_clean'
-        ]
+        return self._meta.output_ids
 
     def end(self, **kwargs):
         for id in [
