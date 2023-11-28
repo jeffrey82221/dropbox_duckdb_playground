@@ -12,6 +12,9 @@ from batch_framework.storage import Storage
 __all__ = ['MapReduce']
 
 class MapReduce(ETLGroup):
+    """
+    Decorating an ETL object into MapReduced version
+    """
     def __init__(self, map: ObjProcessor, parallel_count: int, tmp_storage: Storage, has_external_input: bool=False):
         self._map = map
         self._tmp_storage = tmp_storage

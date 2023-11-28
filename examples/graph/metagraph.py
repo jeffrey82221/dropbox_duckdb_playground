@@ -1,6 +1,6 @@
 import copy
 from typing import Dict, Tuple, List
-from group import GroupingMeta
+from .group import GroupingMeta
 
 
 class MetaGraph:

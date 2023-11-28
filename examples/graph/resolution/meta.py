@@ -1,10 +1,10 @@
 """
 TODO:
 - [X] Enable Not Provide of Canon Node & Canon Lambda 
-- [ ] Adding links / nodes property convertion to MetaGraph class
+- [X] Adding links / nodes property convertion to MetaGraph class
 """
 from typing import List, Dict, Callable, Optional, Tuple, Set
-from group import GroupingMeta
+from ..group import GroupingMeta
 
 __all__ = ['ERMeta']
 

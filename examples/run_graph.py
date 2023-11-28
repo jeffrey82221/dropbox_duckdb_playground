@@ -16,14 +16,13 @@ Build Flow of:
 """
 from batch_framework.rdb import DuckDBBackend
 from batch_framework.filesystem import LocalBackend
-from subgraph import SubgraphExtractor
-from metagraph import MetaGraph
-from group import NodeGrouper, LinkGrouper
-from resolution import (
-    ERMeta,
+from graph.subgraph import SubgraphExtractor
+from graph.metagraph import MetaGraph
+from graph.group import NodeGrouper, LinkGrouper
+from graph.resolution import (
     MappingGenerator
 )
-from meta import subgraphs
+from meta import subgraphs, er_meta
 metagraph = MetaGraph(
     subgraphs=subgraphs,
     node_grouping={
@@ -223,29 +222,7 @@ metagraph = MetaGraph(
         """
     }
 )
-er_meta = ERMeta(
-    subgraphs=subgraphs,
-    messy_node='requirement',
-    dedupe_fields=[
-        {'field': 'full_name', 'type': 'String'},
-        {'field': 'before_whitespace', 'type': 'Exact'},
-        {'field': 'before_upper_bracket', 'type': 'Exact'},
-        {'field': 'before_marks', 'type': 'Exact'}
-    ],
-    messy_lambda=lambda record: {
-        'full_name': record['name'],
-        'before_whitespace': record['name'].split(' ')[0].split(';')[0],
-        'before_upper_bracket': record['name'].split('[')[0].split('(')[0],
-        'before_marks': record['name'].split('<')[0].split('>')[0].split('=')[0].split('~')[0]
-    },
-    canon_node='package',
-    canon_lambda=lambda record: {
-        'full_name': record['name'],
-        'before_whitespace': record['name'],
-        'before_upper_bracket': record['name'],
-        'before_marks': record['name']
-    }
-)
+
 grouping_meta = metagraph.grouping_meta
 er_meta.alter_grouping_way(grouping_meta)
 
@@ -255,7 +232,6 @@ subgraph_extractor = SubgraphExtractor(
     input_fs=LocalBackend('./data/canon/output/'), 
     output_fs=LocalBackend('./data/subgraph/output/')
 )
-
 mapping = MappingGenerator(
     er_meta,
     LocalBackend('./data/subgraph/output/'),
@@ -263,7 +239,6 @@ mapping = MappingGenerator(
     LocalBackend('./data/model/'),
     DuckDBBackend()
 )
-
 node_grouper = NodeGrouper(
     meta=grouping_meta,
     rdb=DuckDBBackend(),
@@ -277,7 +252,7 @@ link_grouper = LinkGrouper(
     output_fs=LocalBackend('./data/graph/links/')
 )
 if __name__ == '__main__':
-    # subgraph_extractor.execute(sequential=True)
-    # mapping.execute(sequential=True)
+    subgraph_extractor.execute(sequential=True)
+    mapping.execute(sequential=True)
     node_grouper.execute()
     link_grouper.execute()

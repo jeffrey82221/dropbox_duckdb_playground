@@ -5,7 +5,7 @@ from batch_framework.storage import PandasStorage
 from batch_framework.filesystem import FileSystem
 from .extractor import NodeExtractor, LinkExtractor
 from .validate import Validator
-from metagraph import MetaGraph
+from ..metagraph import MetaGraph
 
 class SubgraphExtractor(ETLGroup):
     """
