@@ -18,7 +18,7 @@ from batch_framework.rdb import DuckDBBackend
 from batch_framework.filesystem import LocalBackend
 from graph.subgraph import SubgraphExtractor
 from graph.metagraph import MetaGraph
-from graph.group import NodeGrouper, LinkGrouper
+from graph.group import GraphGrouper
 from graph.resolution import (
     MappingGenerator
 )
@@ -239,20 +239,14 @@ mapping = MappingGenerator(
     LocalBackend('./data/model/'),
     DuckDBBackend()
 )
-node_grouper = NodeGrouper(
+grouper = GraphGrouper(
     meta=grouping_meta,
     rdb=DuckDBBackend(),
     input_fs=LocalBackend('./data/subgraph/output/'),
-    output_fs=LocalBackend('./data/graph/nodes/')
-)
-link_grouper = LinkGrouper(
-    meta=grouping_meta,
-    rdb=DuckDBBackend(),
-    input_fs=LocalBackend('./data/subgraph/output/'),
-    output_fs=LocalBackend('./data/graph/links/')
+    node_fs=LocalBackend('./data/graph/nodes/'),
+    link_fs=LocalBackend('./data/graph/links/')
 )
 if __name__ == '__main__':
-    subgraph_extractor.execute(sequential=True)
-    mapping.execute(sequential=True)
-    node_grouper.execute()
-    link_grouper.execute()
+    # subgraph_extractor.execute(sequential=True)
+    # mapping.execute(sequential=True)
+    grouper.execute(sequential=True)

@@ -1,10 +1,9 @@
 """
 TODO:
-- [ ] Add ID convertor / Links to Mapping Generator
+- [X] Add ID convertor / Links to Mapping Generator
     -> Build Entity Resolution Class
 - [ ] Enable no-canon workflow in mapping generator
 """
-from typing import List
 import os
 from batch_framework.storage import PandasStorage
 from batch_framework.filesystem import FileSystem
@@ -61,10 +60,6 @@ class MappingGenerator(ETLGroup):
     @property
     def input_ids(self):
         return self._meta.input_ids
-
-    @property
-    def external_input_ids(self) -> List[str]:
-        return self.input_ids
     
     @property
     def output_ids(self):

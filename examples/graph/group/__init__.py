@@ -1,4 +1,4 @@
-from .groupers import NodeGrouper, LinkGrouper
+from .main import GraphGrouper
 from .meta import GroupingMeta
 
-__all__ = ['NodeGrouper', 'LinkGrouper', 'GroupingMeta']
+__all__ = ['GraphGrouper', 'GroupingMeta']
