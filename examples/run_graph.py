@@ -277,7 +277,7 @@ link_grouper = LinkGrouper(
     output_fs=LocalBackend('./data/graph/links/')
 )
 if __name__ == '__main__':
-    subgraph_extractor.execute(sequential=True)
+    # subgraph_extractor.execute(sequential=True)
     # mapping.execute(sequential=True)
-    # node_grouper.execute()
-    # link_grouper.execute()
+    node_grouper.execute()
+    link_grouper.execute()

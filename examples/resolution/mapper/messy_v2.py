@@ -353,9 +353,14 @@ class MessyClusterer(MessyOnly, MatcherBase):
         for cluster_id, cluster_group in enumerate(components):
             for id in cluster_group:
                 messy2cluster_mapping.append(
-                    (g.vs[id]['name'], f'c{cluster_id}')
+                    (g.vs[id]['name'], MessyClusterer.do_hash(cluster_id))
                 )
         table = pd.DataFrame(messy2cluster_mapping, 
                         columns=['messy_id', 'cluster_id'])
         print('# of Cluster:', cluster_id + 1)
         return [table]
+    
+    @staticmethod
+    def do_hash(cluster_id: int) -> int:
+        import ctypes
+        return ctypes.c_size_t(hash(f'cluster*id*v1*{cluster_id}')).value

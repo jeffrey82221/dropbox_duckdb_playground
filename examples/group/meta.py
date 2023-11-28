@@ -130,8 +130,7 @@ class GroupingMeta:
                 result[f'{key}_final'] = SqlBuilder.build_node_join_sql(self.__node_grouping_sqls[key], self.node_grouping[key])
             else:
                 assert len(self.node_grouping[key]) == 1, 'default node grouping should be 1-1 mapping'
-                assert self.node_grouping[key][0] == key, 'default node grouping source node should equals target node'
-                result[f'{key}_final'] = f"SELECT * FROM {key}"
+                result[f'{key}_final'] = f"SELECT * FROM {self.node_grouping[key][0]}"
         return result
     
     @property
@@ -142,6 +141,5 @@ class GroupingMeta:
                 result[f'{key}_final'] = SqlBuilder.build_link_join_sql(self.__link_grouping_sqls[key], self.link_grouping[key])
             else:
                 assert len(self.link_grouping[key]) == 1, 'default link grouping should be 1-1 mapping'
-                assert self.link_grouping[key][0] == key, 'default link grouping source link should equals target link'
-                result[f'{key}_final'] = f"SELECT * FROM {key}"
+                result[f'{key}_final'] = f"SELECT * FROM {self.link_grouping[key][0]}"
         return result
