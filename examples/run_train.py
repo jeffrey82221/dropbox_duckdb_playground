@@ -19,11 +19,9 @@ from graph.resolution import (
 )
 from meta import er_meta
 
-
 subgraph_fs = LocalBackend('./data/subgraph/output/')
 train_fs = LocalBackend('./data/train/')
 model_fs = LocalBackend('./data/model/')
-mapping_fs = LocalBackend('./data/mapping/')
 
 canon_learner = CanonMatchLearner(
     er_meta,
