@@ -1,23 +1,26 @@
 """Divide and conquer module 
 TODO:
-    - [ ] making this a class decorator
+    - [X] making this a class decorator
+    - [ ] using vaex storage to enable zero copy (lower RAM usage)
 """
 from typing import List
 import pandas as pd
 import numpy as np
 import os
-from batch_framework.etl import ObjProcessor, ETLGroup
-from batch_framework.storage import Storage
-
+import vaex as vx
+from batch_framework.etl import ObjProcessor, ETLGroup, SQLExecutor
+from batch_framework.storage import Storage, VaexStorage
+from batch_framework.filesystem import FileSystem
+from batch_framework.rdb import DuckDBBackend
 __all__ = ['MapReduce']
 
 class MapReduce(ETLGroup):
     """
     Decorating an ETL object into MapReduced version
     """
-    def __init__(self, map: ObjProcessor, parallel_count: int, tmp_storage: Storage, has_external_input: bool=False):
+    def __init__(self, map: ObjProcessor, parallel_count: int, tmp_fs: FileSystem, has_external_input: bool=False):
         self._map = map
-        self._tmp_storage = tmp_storage
+        self._tmp_fs = tmp_fs
         self._parallel_count = parallel_count
         self._has_external_input = has_external_input
         class MapClass(ObjProcessor):
@@ -27,41 +30,33 @@ class MapReduce(ETLGroup):
             
             @property
             def input_ids(self):
-                return [f'{id}.{self._partition_id}' for id in map.input_ids]
+                return [f'{id}_{self._partition_id}' for id in map.input_ids]
             
             @property
             def output_ids(self):
-                return [f'{id}.{self._partition_id}' for id in map.output_ids]
+                return [f'{id}.{self._partition_id}.parquet' for id in map.output_ids]
             
             def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
                 return map.transform(inputs, **kwargs)
             
             def start(self, **kwargs):
                 return map.start(**kwargs)
-
-            def end(self, **kwargs):
-                result = map.end(**kwargs)
-                for id in self.input_ids:
-                    path = tmp_storage._backend._directory + id + f'.{self._partition_id}'
-                    if os.path.exists(path):
-                        os.remove(path)
-                return result
             
         units = [
             Divide(
                 self._map.input_ids,
                 parallel_count, 
-                self._map._input_storage, 
-                tmp_storage
+                self._map._input_storage._backend, 
+                tmp_fs
             )
         ] + [
-            MapClass(tmp_storage, i) for i in range(parallel_count)
+            MapClass(type(self._map._input_storage)(tmp_fs), i) for i in range(parallel_count)
         ] + [
             Merge(
                 self._map.output_ids,
                 parallel_count, 
-                tmp_storage,
-                self._map._output_storage, 
+                tmp_fs,
+                self._map._output_storage._backend, 
             )
         ]
         super().__init__(*units)
@@ -84,11 +79,11 @@ class MapReduce(ETLGroup):
     def end(self, **kwargs):
         for id in self.input_ids:
             for i in range(self._parallel_count):
-                path = self._tmp_storage._backend._directory + id + f'.{i}'
+                path = self._tmp_fs._directory + id + f'_{i}'
                 MapReduce._drop_partition(path)
         for id in self.output_ids:
             for i in range(self._parallel_count):
-                path = self._tmp_storage._backend._directory + id + f'.{i}'
+                path = self._tmp_fs._directory + id + f'.{i}.parquet'
                 MapReduce._drop_partition(path)
 
     @staticmethod
@@ -99,13 +94,20 @@ class MapReduce(ETLGroup):
         else:
             print('[drop_partition]', path, 'not found!')
 
-class Base(ObjProcessor):
-    def __init__(self, obj_ids: List[str], divide_count: int, input_storage: Storage, output_storage: Storage):
+# Using Decomposed Divide to avoid large memory usage
+
+
+class Divide(SQLExecutor):
+    def __init__(self, 
+                 obj_ids: List[str], 
+                 divide_count: int, 
+                 input_fs: FileSystem, 
+                 output_fs: FileSystem
+                 ):
         self._obj_ids = obj_ids
         self._divide_count = divide_count
-        super().__init__(input_storage, output_storage)
+        super().__init__(rdb=DuckDBBackend(), input_fs=input_fs, output_fs=output_fs)
 
-class Divide(Base):
     @property
     def input_ids(self):
         return self._obj_ids
@@ -114,29 +116,46 @@ class Divide(Base):
     def output_ids(self):
         results = []
         for id in self._obj_ids:
-            results.extend([id + f'.{i}' for i in range(self._divide_count)])
+            results.extend([id + f'_{i}' for i in range(self._divide_count)])
         return results
 
-    def transform(self, inputs: List[pd.DataFrame]) -> List[pd.DataFrame]:
-        print('Size before divide:', len(inputs[0]))
-        tables = np.array_split(inputs[0], self._divide_count)
-        print('Size after divide:', len(tables[0]))
-        return tables
+    def sqls(self, **kwargs):
+        results = dict()
+        for i, id in enumerate(self.output_ids):
+            results[id] = f"""
+            WITH row_table AS (
+                SELECT
+                    *,
+                    row_number() OVER () AS row_id
+                FROM {self.input_ids[0]}
+            )
+            SELECT 
+                * EXCLUDE(row_id)
+            FROM row_table
+            WHERE row_id % {self._divide_count} = {i}
+            """
+        return results
 
-class Merge(Base):
+
+class Merge(ObjProcessor):
+    def __init__(self, obj_ids: List[str], divide_count: int, input_fs: FileSystem, output_fs: FileSystem):
+        self._obj_ids = obj_ids
+        self._divide_count = divide_count
+        super().__init__(VaexStorage(input_fs), VaexStorage(output_fs))
+
     @property
     def input_ids(self):
         results = []
         for id in self._obj_ids:
-            results.extend([id + f'.{i}' for i in range(self._divide_count)])
+            results.extend([id + f'.{i}.parquet' for i in range(self._divide_count)])
         return results
 
     @property
     def output_ids(self):
         return self._obj_ids
 
-    def transform(self, inputs: List[pd.DataFrame]) -> List[pd.DataFrame]:
-        print('Size before merge:', len(inputs[0]))
-        merged_table = pd.concat(inputs)
-        print('Size after merge:', len(merged_table))
+    def transform(self, inputs: List[vx.DataFrame]) -> List[vx.DataFrame]:
+        # print('Size before merge:', len(inputs[0]))
+        merged_table = vx.concat(inputs)
+        # print('Size after merge:', len(merged_table))
         return [merged_table]

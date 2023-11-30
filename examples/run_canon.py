@@ -5,8 +5,8 @@ pypi_table_loader = SimplePyPiCanonicalize(
     tmp_fs=LocalBackend('./data/canon/tmp/'),
     output_fs=LocalBackend('./data/canon/output/'),
     partition_fs=LocalBackend('./data/canon/partition/'),
-    parallel_count=100,
-    test_count=10000
+    parallel_count=10,
+    test_count=100
 )
 if __name__ == '__main__':
     # Total Package Count: 496743

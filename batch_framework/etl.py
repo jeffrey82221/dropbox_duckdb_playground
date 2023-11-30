@@ -203,7 +203,9 @@ class SQLExecutor(ETL):
         if self._input_storage is not None:
             for id in self.input_ids:
                 if self._input_storage._backend.check_exists(id):
+                    print(f'@{self} Start Registering Input: {id}')
                     self._rdb.register(id, self._input_storage.download(id))
+                    print(f'@{self} End Registering Input: {id}')
         # Do transform using SQL on RDB
         for output_id, sql in self.sqls(**kwargs).items():
             self._rdb.execute(f'''
@@ -212,8 +214,10 @@ class SQLExecutor(ETL):
         # Load Table into FileSystem from RDB
         if self._output_storage is not None:
             for id in self.output_ids:
+                print(f'@{self} Start Uploading Output: {id}')
                 table = self._rdb.execute(f'SELECT * FROM {id}').arrow()
                 self._output_storage.upload(table, id)
+                print(f'@{self} End Uploading Output: {id}')
 
 class ObjProcessor(ETL):
     """

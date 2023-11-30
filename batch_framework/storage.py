@@ -134,6 +134,8 @@ class VaexStorage(Storage):
 
     def upload(self, vaex: vx.DataFrame, obj_id: str):
         if isinstance(self._backend, LocalBackend):
+            # Try using multithread + io.pipe to stream vaex 
+            # to target directory
             buff = io.BytesIO()
             vaex.export_parquet(buff)
             self._backend.upload_core(buff, obj_id)
