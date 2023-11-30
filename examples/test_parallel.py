@@ -5,8 +5,8 @@ from batch_framework.storage import PandasStorage
 from batch_framework.filesystem import LocalBackend
 import pandas as pd
 
-ENLARGE_RATE = 200
-SPLIT_COUNT = 2
+ENLARGE_RATE = 1000
+SPLIT_COUNT = 5
 
 class TestSmallToLargeProcess(ObjProcessor):
     __name__ = 'TestSmallToLargeProcess'
@@ -142,4 +142,4 @@ class MemoryIntenseFlow(ETLGroup):
 intense_flow = MemoryIntenseFlow()
 if __name__ == '__main__':
     # simple_test_flow.execute()
-    intense_flow.execute(sequential=True)
+    intense_flow.execute(sequential=True) 

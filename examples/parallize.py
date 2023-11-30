@@ -117,12 +117,10 @@ class DecomposedDivide(ObjProcessor):
     
     def transform(self, inputs: List[vx.DataFrame]) -> List[vx.DataFrame]:
         results = []
-        for i, table in enumerate(inputs):
+        for table in inputs:
             size = len(table)
-            print('generate table size:', size)
             batch_size = size // self._divide_count
             subtable = table[batch_size*self._partition_id:batch_size*(self._partition_id+1)]
-            print(f'get subtable for {i}th input')
             results.append(subtable)
         return results
         
