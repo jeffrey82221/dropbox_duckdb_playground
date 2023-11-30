@@ -5,10 +5,11 @@ from batch_framework.storage import PandasStorage
 from batch_framework.filesystem import LocalBackend
 import pandas as pd
 
-ENLARGE_RATE = 1000
-SPLIT_COUNT = 10
+ENLARGE_RATE = 200
+SPLIT_COUNT = 2
 
-class TestProcess(ObjProcessor):
+class TestSmallToLargeProcess(ObjProcessor):
+    __name__ = 'TestSmallToLargeProcess'
     @property
     def input_ids(self):
         return ['package']
@@ -22,19 +23,22 @@ class TestProcess(ObjProcessor):
         return [output]
 
 class TestLargeToSmall(ObjProcessor):
+    __name__ = 'TestLargeToSmall'
     @property
     def input_ids(self):
         return ['test']
     
     @property
     def output_ids(self):
-        return ['package']
+        return ['package_source']
     
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
-        output = inputs[0].head(1000)
+        size = len(inputs[0])
+        output = inputs[0].head(size // 1000)
         return [output]
 
 class TestSimple(ObjProcessor):
+    __name__ = 'TestSimple'
     @property
     def input_ids(self):
         return ['package']
@@ -57,6 +61,7 @@ class ExpectFlow(ObjProcessor):
     
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
         return inputs
+
 
 class AssertEqual(ObjProcessor):
     @property
@@ -100,26 +105,41 @@ class TestFlow(ETLGroup):
     def output_ids(self):
         return []
     
-
 simple_test_flow = TestFlow()
 
-process1 = MapReduce(TestProcess(
-    PandasStorage(LocalBackend('./data/subgraph/output/')), 
-    PandasStorage(LocalBackend('./data/parallel/')),
-), SPLIT_COUNT, 
-    tmp_fs = LocalBackend('./data/parallel/partition/'),
-    has_external_input=True
-)
+class MemoryIntenseFlow(ETLGroup):
+    def __init__(self):
+        src_storage = PandasStorage(LocalBackend('./data/subgraph/output/'))
+        target_storage = PandasStorage(LocalBackend('./data/parallel/'))
+        tmp_fs = LocalBackend('./data/parallel/partition/')
+        process1 = MapReduce(TestSmallToLargeProcess(
+            src_storage, 
+            target_storage,
+        ), SPLIT_COUNT, 
+            tmp_fs = tmp_fs
+        )
 
-process2 = MapReduce(TestLargeToSmall(
-    PandasStorage(LocalBackend('./data/parallel/')),
-    PandasStorage(LocalBackend('./data/subgraph/output/')), 
-), SPLIT_COUNT, 
-    tmp_fs = LocalBackend('./data/parallel/partition/'),
-    has_external_input=True
-)
+        process2 = MapReduce(TestLargeToSmall(
+            target_storage,
+            src_storage, 
+        ), SPLIT_COUNT, 
+            tmp_fs = tmp_fs
+        )
+        super().__init__(process1, process2)
 
+    @property
+    def input_ids(self):
+        return ['package']
+    
+    @property
+    def output_ids(self):
+        return []
+    
+    @property
+    def external_input_ids(self) -> List[str]:
+        return self.input_ids
+
+intense_flow = MemoryIntenseFlow()
 if __name__ == '__main__':
     # simple_test_flow.execute()
-    # process1.execute(sequential=True)
-    process2.execute(sequential=True)
+    intense_flow.execute(sequential=True)
