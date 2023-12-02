@@ -11,6 +11,7 @@ from paradag import MultiThreadProcessor, SequentialProcessor
 from typing import List, Dict, Optional
 from threading import Semaphore
 from dill.source import getsource
+import traceback
 import abc
 from .storage import Storage, PyArrowStorage
 from .filesystem import FileSystem
@@ -126,15 +127,15 @@ class DagExecutor:
             else:
                 raise ValueError(f'param of DagExecutor should be str, ETL, or callable, but it is: {type(param)}')
         except Exception as e:
+            traceback_str = traceback.format_exc()
             if isinstance(param, ETL):
                 if isinstance(param, ObjProcessor):
-                    
-                    content = getsource(param.transform) + '\ninner:\n' + param.transform(None)
+                    content = getsource(param.transform) + f'\n{traceback_str}'
                 elif isinstance(param, SQLExecutor):
-                    content = getsource(param.sqls)
+                    content = getsource(param.sqls) + f'\n{traceback_str}'
                 raise ValueError(f'something wrong on transform/sql of {param}: \n{content}') from e
             elif callable(param):
-                content = getsource(param)
+                content = getsource(param) + f'\n{traceback_str}'
                 raise ValueError(f'something wrong on {param}: \n{content}') from e
             else:
                 raise e 
@@ -255,8 +256,10 @@ class SQLExecutor(ETL):
                     self._output_storage.upload(table, id)
                     print(f'@{self} End Uploading Output: {id}')
         finally:
-            # conn.close()
             cursor.close()
+
+    def end(self, **kwargs):
+        self._rdb.get_conn().close()
 
 class ObjProcessor(ETL):
     """

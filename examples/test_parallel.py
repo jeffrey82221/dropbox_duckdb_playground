@@ -105,7 +105,7 @@ class TestFlow(ETLGroup):
     def output_ids(self):
         return []
     
-simple_test_flow = TestFlow()
+
 
 class MemoryIntenseFlow(ETLGroup):
     def __init__(self):
@@ -141,8 +141,8 @@ class MemoryIntenseFlow(ETLGroup):
 
 intense_flow = MemoryIntenseFlow()
 if __name__ == '__main__':
-    simple_test_flow.execute(sequential=True)
-    simple_test_flow.execute()
-    simple_test_flow.execute(max_active_run=1)
-    simple_test_flow.execute(max_active_run=2)
+    TestFlow().execute(sequential=True)
+    TestFlow().execute()
+    TestFlow().execute(max_active_run=1)
+    TestFlow().execute(max_active_run=2)
     intense_flow.execute(max_active_run=1)

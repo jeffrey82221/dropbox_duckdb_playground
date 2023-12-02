@@ -56,7 +56,7 @@ class MapReduce(ETLGroup):
             def start(self, **kwargs):
                 return map.start(**kwargs)
         units = [
-            RobustAddPartitionKey(map_name, self._map.input_ids, self._map._input_storage._backend, tmp_fs, parallel_count)
+            AddPartitionKey(map_name, self._map.input_ids, self._map._input_storage._backend, tmp_fs, parallel_count)
         ] + [
             EfficientDivide(map_name, id, parallel_count, tmp_fs, tmp_fs) for id in self._map.input_ids
         ] + [
@@ -165,12 +165,12 @@ class AddPartitionKey(SQLExecutor):
             WITH row_table AS (
                 SELECT
                     *,
-                    row_number() OVER () AS row_id
+                    (row_number() OVER ()) AS row_id
                 FROM {in_id}
             )
             SELECT 
                 *, 
-                row_id % {self._divide_count} AS partition_key
+                row_id % {self._divide_count} AS partition
             FROM row_table
             """
         return results
@@ -230,6 +230,7 @@ class EfficientDivide(ObjProcessor):
         table = inputs[0]
         columns = table.get_column_names()
         columns.remove('partition')
+        columns.remove('row_id')
         results = []
         for _, df in table.groupby('partition'):
             assert len(df) > 0, 'output dataframes of EfficientDivide should not be 0 size.'
