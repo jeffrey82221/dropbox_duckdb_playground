@@ -145,4 +145,4 @@ if __name__ == '__main__':
     simple_test_flow.execute()
     simple_test_flow.execute(max_active_run=1)
     simple_test_flow.execute(max_active_run=2)
-    intense_flow.execute(sequential=True)
+    intense_flow.execute(max_active_run=1)

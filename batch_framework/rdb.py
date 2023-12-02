@@ -13,9 +13,9 @@ class RDB(Backend):
     """RDB backend for storing tabular data
     """
 
-    def __init__(self, schema, conn):
-        self._schema = schema
-        self._conn = conn
+    def __init__(self, db_name: str=''):
+        self._db_name = db_name
+        self._conn = None
         super().__init__()
 
     @abc.abstractmethod
@@ -40,6 +40,12 @@ class RDB(Backend):
         """
         raise NotImplementedError
 
+    def get_conn(self):
+        """
+        Create New DB connection object
+        """
+        raise NotImplementedError
+    
     def close(self):
         """
         Close db connection
@@ -48,8 +54,6 @@ class RDB(Backend):
 
 class DuckDBBackend(RDB):
     def __init__(self, persist_fs: Optional[FileSystem]=None, db_name: Optional[str]=None):
-        self._persist_fs = persist_fs
-        self._db_name = db_name
         if persist_fs:
             if not isinstance(persist_fs, LocalBackend):
                 if persist_fs.check_exists(db_name):
@@ -58,21 +62,44 @@ class DuckDBBackend(RDB):
                     lb = LocalBackend()
                     lb.upload_core(buff, self._db_name)
                     assert os.path.exists('./' + db_name), f'db_name: {db_name} does not exist'
-            super().__init__('', duckdb.connect(database=persist_fs._directory + db_name))
-        else:
-            super().__init__('', duckdb.connect(database=':memory:'))
+        self._persist_fs = persist_fs
+        super().__init__(db_name)
+
+    @property
+    def conn(self):
+        """
+        Get thread local used connection.
+        """
+        if self._conn is None:
+            if self._persist_fs is None:
+                conn = duckdb.connect(database=':memory:')
+            else:
+                conn = duckdb.connect(database=self._persist_fs._directory + self._db_name)
+            self._conn = conn
+        return self._conn
+        
+    def get_conn(self):
+        return self.conn
 
     def register(self, table_name: str, table: object):
-        self._conn.register(table_name, table)
+        conn = self.conn
+        try:
+            conn.register(table_name, table)
+        except BaseException as e:
+            raise ValueError(f'table_name: {table_name}') from e
+        
 
     def execute(self, sql: str) -> object:
+        conn = self.conn
         try:
-            return self._conn.execute(sql)
+            return conn.execute(sql)
         except BaseException as e:
             raise ValueError(sql) from e
 
     def close(self):
-        self._conn.close()
+        conn = self.conn
+        conn.close()
+        self._conn = None
     
     def commit(self):
         """

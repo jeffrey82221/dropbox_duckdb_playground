@@ -231,26 +231,32 @@ class SQLExecutor(ETL):
         """
         assert set(self.sqls(**kwargs).keys()) == set(self.output_ids), 'sqls key should corresponds to the output_ids'
         # Extract Table and Load into RDB from FileSystem
-        if self._input_storage is not None:
-            for id in self.input_ids:
-                if self._input_storage._backend.check_exists(id):
-                    print(f'@{self} Start Registering Input: {id}')
-                    self._rdb.register(id, self._input_storage.download(id))
-                    print(f'@{self} End Registering Input: {id}')
-        # Do transform using SQL on RDB
-        for output_id, sql in self.sqls(**kwargs).items():
-            sql_table_id = output_id.replace('.', '_')
-            self._rdb.execute(f'''
-            CREATE TABLE {sql_table_id} AS ({sql});
-            ''')
-        # Load Table into FileSystem from RDB
-        if self._output_storage is not None:
-            for id in self.output_ids:
-                print(f'@{self} Start Uploading Output: {id}')
-                sql_table_id = id.replace('.', '_')
-                table = self._rdb.execute(f'SELECT * FROM {sql_table_id}').arrow()
-                self._output_storage.upload(table, id)
-                print(f'@{self} End Uploading Output: {id}')
+        conn = self._rdb.get_conn()
+        cursor = conn.cursor()
+        try:
+            if self._input_storage is not None:
+                for id in self.input_ids:
+                    if self._input_storage._backend.check_exists(id):
+                        print(f'@{self} Start Registering Input: {id}')
+                        cursor.register(id, self._input_storage.download(id))
+                        print(f'@{self} End Registering Input: {id}')
+            # Do transform using SQL on RDB
+            for output_id, sql in self.sqls(**kwargs).items():
+                sql_table_id = output_id.replace('.', '_')
+                cursor.execute(f'''
+                CREATE TABLE {sql_table_id} AS ({sql});
+                ''')
+            # Load Table into FileSystem from RDB
+            if self._output_storage is not None:
+                for id in self.output_ids:
+                    print(f'@{self} Start Uploading Output: {id}')
+                    sql_table_id = id.replace('.', '_')
+                    table = cursor.execute(f'SELECT * FROM {sql_table_id}').arrow()
+                    self._output_storage.upload(table, id)
+                    print(f'@{self} End Uploading Output: {id}')
+        finally:
+            # conn.close()
+            cursor.close()
 
 class ObjProcessor(ETL):
     """

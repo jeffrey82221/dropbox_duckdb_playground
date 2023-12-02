@@ -99,22 +99,16 @@ class PandasStorage(DataFrameStorage):
             buff = io.BytesIO()
             dataframe.to_parquet(buff)
             self._backend.upload_core(buff, obj_id)
-        elif isinstance(self._backend, RDB):
-            assert all([isinstance(col, str) for col in dataframe.columns]
-                       ), 'all columns should be string for RDB backend'
-            self._backend.register(obj_id, dataframe)
         else:
-            raise TypeError('backend should be RDB or FileSystem')
+            raise TypeError('backend should be FileSystem')
 
     def download(self, obj_id: str) -> pd.DataFrame:
         if isinstance(self._backend, FileSystem):
             buff = self._backend.download_core(obj_id)
             result = pd.read_parquet(buff, engine='pyarrow')
             return result
-        elif isinstance(self._backend, RDB):
-            return self._backend.execute(f"SELECT * FROM {obj_id}").df()
         else:
-            raise TypeError('backend should be RDB or FileSystem')
+            raise TypeError('backend should be FileSystem')
 
 class PyArrowStorage(DataFrameStorage):
     """Storage of pyarrow Table
@@ -124,20 +118,15 @@ class PyArrowStorage(DataFrameStorage):
             buff = io.BytesIO()
             pq.write_table(dataframe, buff)
             self._backend.upload_core(buff, obj_id)
-        elif isinstance(self._backend, RDB):
-            self._backend.register(obj_id, dataframe)
         else:
-            raise TypeError('backend should be RDB or FileSystem')
+            raise TypeError('backend should be FileSystem')
 
     def download(self, obj_id: str) -> pa.Table:
         if isinstance(self._backend, FileSystem):
             buff = self._backend.download_core(obj_id)
             return pq.read_table(buff)
-        elif isinstance(self._backend, RDB):
-            return self._backend.execute(
-                f"SELECT * FROM {obj_id}").arrow()
         else:
-            raise TypeError('backend should be RDB or FileSystem')
+            raise TypeError('backend should be FileSystem')
 
 class VaexStorage(DataFrameStorage):
     """Storage of Vaex DataFrame
@@ -149,19 +138,12 @@ class VaexStorage(DataFrameStorage):
             buff = io.BytesIO()
             dataframe.export_parquet(buff)
             self._backend.upload_core(buff, obj_id)
-        elif isinstance(self._backend, RDB):
-            assert all([isinstance(col, str) for col in vaex.columns]
-                       ), 'all columns should be string for RDB backend'
-            self._backend.register(obj_id, dataframe.to_arrow_table())
         else:
-            raise TypeError('backend should be RDB or LocalBackend')
+            raise TypeError('backend should be LocalBackend')
 
     def download(self, obj_id: str) -> vx.DataFrame:
         if isinstance(self._backend, LocalBackend):
             result = vx.open(f'{self._backend._directory}{obj_id}')
             return result
-        elif isinstance(self._backend, RDB):
-            return vx.from_arrow_table(self._backend.execute(
-                f"SELECT * FROM {obj_id}").arrow())
         else:
-            raise TypeError('backend should be RDB or LocalBackend')
+            raise TypeError('backend should be LocalBackend')
