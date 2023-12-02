@@ -5,7 +5,7 @@ from batch_framework.storage import PandasStorage
 from batch_framework.filesystem import LocalBackend
 import pandas as pd
 
-ENLARGE_RATE = 100
+ENLARGE_RATE = 1000
 SPLIT_COUNT = 5
 
 class TestSmallToLargeProcess(ObjProcessor):
