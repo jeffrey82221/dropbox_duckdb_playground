@@ -5,7 +5,7 @@ from batch_framework.storage import PandasStorage
 from batch_framework.filesystem import LocalBackend
 import pandas as pd
 
-ENLARGE_RATE = 1000
+ENLARGE_RATE = 100
 SPLIT_COUNT = 5
 
 class TestSmallToLargeProcess(ObjProcessor):
@@ -34,7 +34,7 @@ class TestLargeToSmall(ObjProcessor):
     
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
         size = len(inputs[0])
-        output = inputs[0].head(size // 1000)
+        output = inputs[0].head(size // ENLARGE_RATE)
         return [output]
 
 class TestSimple(ObjProcessor):
@@ -141,5 +141,8 @@ class MemoryIntenseFlow(ETLGroup):
 
 intense_flow = MemoryIntenseFlow()
 if __name__ == '__main__':
-    # simple_test_flow.execute()
-    intense_flow.execute(sequential=True) 
+    simple_test_flow.execute(sequential=True)
+    simple_test_flow.execute()
+    simple_test_flow.execute(max_active_run=1)
+    simple_test_flow.execute(max_active_run=2)
+    intense_flow.execute(sequential=True)

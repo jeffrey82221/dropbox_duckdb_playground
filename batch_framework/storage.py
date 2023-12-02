@@ -24,6 +24,13 @@ class Storage:
             to be use for the python object storage.
         """
         self._backend = backend
+    
+    def get_upload_type(self):
+        first_input_arg = list(self.upload.__annotations__.keys())[0]
+        return self.upload.__annotations__[first_input_arg]
+    
+    def get_download_type(self):
+        return self.download.__annotations__['return']
 
     @abc.abstractmethod
     def upload(self, obj: object, obj_id: str):
@@ -68,23 +75,34 @@ class JsonStorage(Storage):
         buff.seek(0)
         return json.loads(buff.read().decode())
 
-class PandasStorage(Storage):
+class DataFrameStorage(Storage):
     """
-    Storage of Pandas DataFrame
+    Storage of DataFrame
     """
-
     def __init__(self, backend: Backend):
         super().__init__(backend=backend)
 
-    def upload(self, pandas: pd.DataFrame, obj_id: str):
+    @abc.abstractmethod
+    def upload(self, dataframe: Union[pd.DataFrame, vx.DataFrame, pa.Table], obj_id: str):
+        raise NotImplementedError
+    
+    @abc.abstractmethod
+    def download(self, obj_id: str) -> Union[pd.DataFrame, vx.DataFrame, pa.Table]:
+        raise NotImplementedError
+    
+class PandasStorage(DataFrameStorage):
+    """
+    Storage of Pandas DataFrame
+    """
+    def upload(self, dataframe: pd.DataFrame, obj_id: str):
         if isinstance(self._backend, FileSystem):
             buff = io.BytesIO()
-            pandas.to_parquet(buff)
+            dataframe.to_parquet(buff)
             self._backend.upload_core(buff, obj_id)
         elif isinstance(self._backend, RDB):
-            assert all([isinstance(col, str) for col in pandas.columns]
+            assert all([isinstance(col, str) for col in dataframe.columns]
                        ), 'all columns should be string for RDB backend'
-            self._backend.register(obj_id, pandas)
+            self._backend.register(obj_id, dataframe)
         else:
             raise TypeError('backend should be RDB or FileSystem')
 
@@ -98,19 +116,16 @@ class PandasStorage(Storage):
         else:
             raise TypeError('backend should be RDB or FileSystem')
 
-class PyArrowStorage(Storage):
+class PyArrowStorage(DataFrameStorage):
     """Storage of pyarrow Table
     """
-    def __init__(self, backend: Backend):
-        super().__init__(backend=backend)
-
-    def upload(self, pyarrow: pa.Table, obj_id: str):
+    def upload(self, dataframe: pa.Table, obj_id: str):
         if isinstance(self._backend, LocalBackend):
             buff = io.BytesIO()
-            pq.write_table(pyarrow, buff)
+            pq.write_table(dataframe, buff)
             self._backend.upload_core(buff, obj_id)
         elif isinstance(self._backend, RDB):
-            self._backend.register(obj_id, pyarrow)
+            self._backend.register(obj_id, dataframe)
         else:
             raise TypeError('backend should be RDB or FileSystem')
 
@@ -124,25 +139,20 @@ class PyArrowStorage(Storage):
         else:
             raise TypeError('backend should be RDB or FileSystem')
 
-
-class VaexStorage(Storage):
-    """Storage of Polars DataFrame
+class VaexStorage(DataFrameStorage):
+    """Storage of Vaex DataFrame
     """
-
-    def __init__(self, backend: Backend):
-        super().__init__(backend=backend)
-
-    def upload(self, vaex: vx.DataFrame, obj_id: str):
+    def upload(self, dataframe: vx.DataFrame, obj_id: str):
         if isinstance(self._backend, LocalBackend):
             # Try using multithread + io.pipe to stream vaex 
             # to target directory
             buff = io.BytesIO()
-            vaex.export_parquet(buff)
+            dataframe.export_parquet(buff)
             self._backend.upload_core(buff, obj_id)
         elif isinstance(self._backend, RDB):
             assert all([isinstance(col, str) for col in vaex.columns]
                        ), 'all columns should be string for RDB backend'
-            self._backend.register(obj_id, vaex.to_arrow_table())
+            self._backend.register(obj_id, dataframe.to_arrow_table())
         else:
             raise TypeError('backend should be RDB or LocalBackend')
 

@@ -12,9 +12,10 @@ TODO:
     - [X] Update package records -> Decorate with MapReduce
     - [X] Combine package records 
 - [ ] Reduce RAM usage:
-    - [ ] LatestFeedback -> Use streaming for copying 
-    - [ ] Load Two kinds of feedback: 1) with latest json 2) without latest json
+    - [-] LatestFeedback -> Use streaming for copying 
+    - [-] Load Two kinds of feedback: 1) with latest json 2) without latest json
     - [ ] `Combine` use DuckDB to leverage zero-copy capability
+    - [ ] `Combine` use polaris to leverage zero-copy with drop_duplicate functionality
 """
 from typing import List, Dict, Tuple, Optional
 import requests
@@ -92,8 +93,12 @@ class LatestDownloader(ObjProcessor, LatestProcessor):
         return ['latest_new']
 
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
-        assert len(inputs[0].name.tolist()) > 0, 'Should at least have one name'
+        assert len(inputs[0]) > 0, 'input table should have size > 0'
         new_df = self._get_new_package_records(inputs[0].name.tolist())
+        assert 'name' in new_df.columns
+        assert 'latest' in new_df.columns
+        assert 'etag' in new_df.columns
+        assert len(new_df.columns) == 3
         return [new_df]
     
     def _get_new_package_records(self, names: List[str]) -> pd.DataFrame:
@@ -120,18 +125,38 @@ class LatestDownloader(ObjProcessor, LatestProcessor):
             results.append((name, latest, etag))
         return pd.DataFrame.from_records(results, columns=['name', 'latest', 'etag'])
 
-class LatestUpdator(ObjProcessor, LatestProcessor):
+class LatestUpdatorInputReduce(ObjProcessor):
     @property
     def input_ids(self):
         return ['latest_feedback']
+
+    @property
+    def output_ids(self):
+        return ['latest_feedback_reduced']
+
+    def transform(self, inputs: List[vx.DataFrame], **kwargs) -> List[vx.DataFrame]:
+        return [inputs[0]['name', 'etag']]
+    
+class LatestUpdator(ObjProcessor, LatestProcessor):
+    @property
+    def input_ids(self):
+        return ['latest_feedback_reduced']
     
     @property
     def output_ids(self):
         return ['latest_updated']
 
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
-        new_df = self._get_updated_package_records(inputs[0])
-        return [new_df]
+        assert len(inputs) == 1, 'LatestUpdator should have 1 input from latest_feedback'
+        try:
+            df = inputs[0]
+            for col in df.columns:
+                if col not in ['name', 'etag']:
+                    del df[col]
+            new_df = self._get_updated_package_records(df)
+            return [new_df]
+        except Exception as e:
+            raise e
 
     def _get_updated_package_records(self, latest_df: pd.DataFrame) -> pd.DataFrame:
         """Get the update latest records

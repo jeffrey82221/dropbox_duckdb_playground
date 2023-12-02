@@ -28,8 +28,10 @@ gdp = GraphDataPlatform(
     er_meta_list=[er_meta],
     mapping_fs = LocalBackend('./data/mapping/'),
     model_fs = LocalBackend('./data/model/'),
-    rdb=DuckDBBackend()
+    rdb=DuckDBBackend(),
+    messy_pairing_worker_cnt=100
 )
 
 if __name__ == '__main__':
     gdp.execute(sequential=True)
+    # gdp.execute(max_active_run=2)

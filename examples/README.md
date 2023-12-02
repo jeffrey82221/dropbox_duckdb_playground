@@ -14,14 +14,15 @@
         - [X] Generate mapping table for messy node source.
         - [X] Do messy->canon convertion on the messy nodes
             - [X] Convert Node Table
-            - [ ] Convert Link Table
-    - [ ] Group Nodes After Canon Clean Up
-    - [X] Entity Resolution on the all messy node. 
-        - [X] Extract non-canon nodes 
+            - [X] Convert Link Table
+    - [X] Group Nodes After Canon Clean Up
+    - [X] Entity Resolution on the all messy node.
+        - [X] Extract non-canon nodes. 
         - [X] Do entity resolution on non-canon nodes
         - [X] Do non-canon->cluster_id convertion 
             - [X] Convert Node Table
-            - [ ] Convert Link Table
-    - [ ] ID validate on grouped links
-- [ ] Add Link Node Id convertion to group merging layer
+            - [X] Convert Link Table
+    - [ ] ID validate on grouped links.
+    - [ ] Enable no canon entity resolution flow.
+- [X] Add Link Node Id convertion to group merging layer
 - [ ] Make local file operation general for FileSystem class

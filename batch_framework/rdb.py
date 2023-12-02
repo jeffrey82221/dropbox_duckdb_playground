@@ -66,7 +66,10 @@ class DuckDBBackend(RDB):
         self._conn.register(table_name, table)
 
     def execute(self, sql: str) -> object:
-        return self._conn.execute(sql)
+        try:
+            return self._conn.execute(sql)
+        except BaseException as e:
+            raise ValueError(sql) from e
 
     def close(self):
         self._conn.close()

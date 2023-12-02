@@ -49,8 +49,7 @@ class MessyMatcher(ETLGroup):
             model_fs=model_fs,
             threshold=threshold
         ), pairing_worker_count, 
-            PandasStorage(self._partition_fs),
-            has_external_input=False
+            tmp_fs = self._partition_fs
         )
         messy_cluster = MessyClusterer(
             meta,

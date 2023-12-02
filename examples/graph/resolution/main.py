@@ -15,7 +15,7 @@ from .mapper import MessyMatcher
 from .convertor import IDConvertor
 
 class MappingGenerator(ETLGroup):
-    def __init__(self, meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB):
+    def __init__(self, meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB, messy_pairing_worker_cnt: int = 10):
         self._mapping_fs = mapping_fs
         canon_matcher = CanonMatcher(meta,
             PandasStorage(subgraph_fs), 
@@ -29,6 +29,7 @@ class MappingGenerator(ETLGroup):
             mapping_fs,
             model_fs,
             rdb,
+            pairing_worker_count=messy_pairing_worker_cnt,
             threshold=0.5
         )
         mapping_combiner = MappingCombiner(

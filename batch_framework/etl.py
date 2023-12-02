@@ -9,6 +9,8 @@ from paradag import DAG
 from paradag import dag_run
 from paradag import MultiThreadProcessor, SequentialProcessor
 from typing import List, Dict, Optional
+from threading import Semaphore
+from dill.source import getsource
 import abc
 from .storage import Storage, PyArrowStorage
 from .filesystem import FileSystem
@@ -100,22 +102,46 @@ class ETL:
             dag.add_edge(self, output_id)
 
 class DagExecutor:
+    """Executing Unit for Tasks in the Dag"""
+    def __init__(self, limit_pool: Optional[Semaphore]=None):
+        self._limit_pool = limit_pool
+
     def param(self, vertex):
         return vertex
 
     def execute(self, param):
-        if isinstance(param, str):
-            print(f'@Passing Object: {param}')
-        elif isinstance(param, ETL):
-            print('@Start:', type(param), 'inputs:', param.input_ids, 'outputs:', param.output_ids)
-            param.execute()
-            print('@End:', type(param), 'inputs:', param.input_ids, 'outputs:', param.output_ids)
-        elif callable(param):
-            print('@Start:', param, 'of', type(param))
-            param()
-            print('@End:', param, 'of', type(param))
-        else:
-            raise TypeError
+        if self._limit_pool is not None:
+            self._limit_pool.acquire()
+        try:
+            if isinstance(param, str):
+                print(f'@Passing Object: {param}')
+            elif isinstance(param, ETL):
+                print('@Start:', type(param), 'inputs:', param.input_ids, 'outputs:', param.output_ids)
+                param.execute()
+                print('@End:', type(param), 'inputs:', param.input_ids, 'outputs:', param.output_ids)
+            elif callable(param):
+                print('@Start:', param, 'of', type(param))
+                param()
+                print('@End:', param, 'of', type(param))
+            else:
+                raise ValueError(f'param of DagExecutor should be str, ETL, or callable, but it is: {type(param)}')
+        except Exception as e:
+            if isinstance(param, ETL):
+                if isinstance(param, ObjProcessor):
+                    
+                    content = getsource(param.transform) + '\ninner:\n' + param.transform(None)
+                elif isinstance(param, SQLExecutor):
+                    content = getsource(param.sqls)
+                raise ValueError(f'something wrong on transform/sql of {param}: \n{content}') from e
+            elif callable(param):
+                content = getsource(param)
+                raise ValueError(f'something wrong on {param}: \n{content}') from e
+            else:
+                raise e 
+        finally:
+            if self._limit_pool is not None:
+                self._limit_pool.release()
+
 
 class ETLGroup(ETL):
     """Interface for connecting multiple ETL units
@@ -134,6 +160,11 @@ class ETLGroup(ETL):
         if 'sequential' in kwargs and kwargs['sequential']:
             dag_run(dag, processor=SequentialProcessor(), 
                     executor=DagExecutor()
+                    )
+        elif 'max_active_run' in kwargs:
+            limit_pool = Semaphore(value=kwargs['max_active_run'])
+            dag_run(dag, processor=MultiThreadProcessor(), 
+                    executor=DagExecutor(limit_pool=limit_pool)
                     )
         else:
             dag_run(dag, processor=MultiThreadProcessor(), 
@@ -208,14 +239,16 @@ class SQLExecutor(ETL):
                     print(f'@{self} End Registering Input: {id}')
         # Do transform using SQL on RDB
         for output_id, sql in self.sqls(**kwargs).items():
+            sql_table_id = output_id.replace('.', '_')
             self._rdb.execute(f'''
-            CREATE TABLE {output_id} AS ({sql});
+            CREATE TABLE {sql_table_id} AS ({sql});
             ''')
         # Load Table into FileSystem from RDB
         if self._output_storage is not None:
             for id in self.output_ids:
                 print(f'@{self} Start Uploading Output: {id}')
-                table = self._rdb.execute(f'SELECT * FROM {id}').arrow()
+                sql_table_id = id.replace('.', '_')
+                table = self._rdb.execute(f'SELECT * FROM {sql_table_id}').arrow()
                 self._output_storage.upload(table, id)
                 print(f'@{self} End Uploading Output: {id}')
 
@@ -231,6 +264,8 @@ class ObjProcessor(ETL):
             self._output_storage = output_storage
         assert isinstance(self._input_storage, Storage), f'input_storage should be Storage rather than: {type(self._input_storage)}'
         assert isinstance(self._output_storage, Storage), f'output_storage should be Storage rather than: {type(self._output_storage)}'
+        assert self.get_input_type() == self._input_storage.get_download_type(), f'storage download type: {self._input_storage.get_download_type()} != transform input type: {self.get_input_type()}'
+        assert self.get_output_type() == self._output_storage.get_upload_type(), f'storage upload type: {self._output_storage.get_upload_type()} != transform output type: {self.get_output_type()}'
         super().__init__()
 
     @abc.abstractmethod
@@ -253,6 +288,8 @@ class ObjProcessor(ETL):
         # Extraction Step 
         if len(self.input_ids):
             input_objs = self._extract_inputs()
+            assert all([isinstance(obj, self.get_input_type()) for obj in input_objs]
+                    ), f'One of the input_obj {input_objs} is not {self.get_input_type()}'
         else:
             input_objs = []
         # Transformation Step
@@ -261,7 +298,7 @@ class ObjProcessor(ETL):
         assert isinstance(
             output_objs, list), 'Output of transform should be a list of object'
         assert all([isinstance(obj, self.get_output_type()) for obj in output_objs]
-                ), f'One of the output_obj is not {self.get_output_type()}'
+                ), f'One of the output_obj {output_objs} is not {self.get_output_type()}'
         # Load Step
         self._load(output_objs)
 
@@ -282,8 +319,6 @@ class ObjProcessor(ETL):
             table = self._input_storage.download(id)
             input_tables.append(table)
             print(f'@{self} End Extracting Input: {id}')
-        assert all([isinstance(obj, self.get_input_type()) for obj in input_tables]
-                    ), f'One of the input_obj is not {self.get_input_type()}'
         return input_tables
 
     def _load(self, output_tables: List[object]):

@@ -22,7 +22,10 @@ class GraphDataPlatform(ETLGroup):
                  canon_fs: FileSystem, subgraph_fs: FileSystem, 
                  node_fs: FileSystem, link_fs: FileSystem, 
                  er_meta_list: List[ERMeta]=[],
-                 mapping_fs: Optional[FileSystem]=None, model_fs: Optional[FileSystem]=None, rdb: RDB=DuckDBBackend()):
+                 mapping_fs: Optional[FileSystem]=None, model_fs: Optional[FileSystem]=None, 
+                 rdb: RDB=DuckDBBackend(), 
+                 messy_pairing_worker_cnt: int=10
+                ):
         # Connecting MetaGraph with Entity Resolution Meta
         grouping_meta = metagraph.grouping_meta
         for er_meta in er_meta_list:
@@ -53,7 +56,8 @@ class GraphDataPlatform(ETLGroup):
                 subgraph_fs=subgraph_fs,
                 mapping_fs=mapping_fs,
                 model_fs=model_fs,
-                rdb=rdb
+                rdb=rdb,
+                messy_pairing_worker_cnt=messy_pairing_worker_cnt
             )
             args.append(mapping)
         super().__init__(*args)
