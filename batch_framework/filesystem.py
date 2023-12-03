@@ -55,6 +55,15 @@ class FileSystem(Backend):
             bool: exists or not
         """
         raise NotImplementedError
+    
+    @abc.abstractmethod
+    def drop_file(self, remote_path: str):
+        """
+        Delete a remote file
+        Args:
+            remote_path (str): remote file path
+        """
+        raise NotImplementedError
 
 
 class DropboxBackend(FileSystem):
@@ -146,3 +155,6 @@ class LocalBackend(FileSystem):
 
     def check_exists(self, remote_path: str) -> bool:
         return os.path.exists(self._directory + remote_path)
+    
+    def drop_file(self, remote_path: str):
+        return os.remove(self._directory + remote_path)

@@ -51,6 +51,20 @@ class Storage:
             object: The downloaded file.
         """
         raise NotImplementedError
+    
+    @abc.abstractmethod
+    def check_exists(self, obj_id: str) -> bool:
+        """
+        Check whether an object exists
+        """
+        raise NotImplementedError
+    
+    @abc.abstractmethod
+    def drop(self, obj_id: str):
+        """
+        Delete an object
+        """
+        raise NotImplementedError
 
 class JsonStorage(Storage):
     """
@@ -68,13 +82,19 @@ class JsonStorage(Storage):
             obj_id (str): The id of the object
         """
         buff = io.BytesIO(json.dumps(json_obj).encode())
-        self._backend.upload_core(buff, obj_id)
+        self._backend.upload_core(buff, obj_id + '.json')
     
     def download(self, obj_id: str) -> Union[Dict, List]:
-        buff = self._backend.download_core(obj_id)
+        buff = self._backend.download_core(obj_id + '.json')
         buff.seek(0)
         return json.loads(buff.read().decode())
 
+    def check_exists(self, obj_id: str) -> bool:
+        return self._backend.check_exists(obj_id + '.json')
+
+    def drop(self, obj_id: str):
+        return self._backend.drop_file(obj_id + '.json')
+    
 class DataFrameStorage(Storage):
     """
     Storage of DataFrame
@@ -90,6 +110,12 @@ class DataFrameStorage(Storage):
     def download(self, obj_id: str) -> Union[pd.DataFrame, vx.DataFrame, pa.Table]:
         raise NotImplementedError
     
+    def check_exists(self, obj_id: str) -> bool:
+        return self._backend.check_exists(obj_id + '.parquet')
+    
+    def drop(self, obj_id: str):
+        return self._backend.drop_file(obj_id + '.parquet')
+
 class PandasStorage(DataFrameStorage):
     """
     Storage of Pandas DataFrame
@@ -98,13 +124,13 @@ class PandasStorage(DataFrameStorage):
         if isinstance(self._backend, FileSystem):
             buff = io.BytesIO()
             dataframe.to_parquet(buff)
-            self._backend.upload_core(buff, obj_id)
+            self._backend.upload_core(buff, obj_id + '.parquet')
         else:
             raise TypeError('backend should be FileSystem')
 
     def download(self, obj_id: str) -> pd.DataFrame:
         if isinstance(self._backend, FileSystem):
-            buff = self._backend.download_core(obj_id)
+            buff = self._backend.download_core(obj_id + '.parquet')
             result = pd.read_parquet(buff, engine='pyarrow')
             return result
         else:
@@ -117,13 +143,13 @@ class PyArrowStorage(DataFrameStorage):
         if isinstance(self._backend, LocalBackend):
             buff = io.BytesIO()
             pq.write_table(dataframe, buff)
-            self._backend.upload_core(buff, obj_id)
+            self._backend.upload_core(buff, obj_id + '.parquet')
         else:
             raise TypeError('backend should be FileSystem')
 
     def download(self, obj_id: str) -> pa.Table:
         if isinstance(self._backend, FileSystem):
-            buff = self._backend.download_core(obj_id)
+            buff = self._backend.download_core(obj_id + '.parquet')
             return pq.read_table(buff)
         else:
             raise TypeError('backend should be FileSystem')
@@ -137,13 +163,13 @@ class VaexStorage(DataFrameStorage):
             # to target directory
             buff = io.BytesIO()
             dataframe.export_parquet(buff)
-            self._backend.upload_core(buff, obj_id)
+            self._backend.upload_core(buff, obj_id + '.parquet')
         else:
             raise TypeError('backend should be LocalBackend')
 
     def download(self, obj_id: str) -> vx.DataFrame:
         if isinstance(self._backend, LocalBackend):
-            result = vx.open(f'{self._backend._directory}{obj_id}')
+            result = vx.open(f'{self._backend._directory}{obj_id}' + '.parquet')
             return result
         else:
             raise TypeError('backend should be LocalBackend')

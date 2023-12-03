@@ -5,8 +5,8 @@ from batch_framework.storage import PandasStorage
 from batch_framework.filesystem import LocalBackend
 import pandas as pd
 
-ENLARGE_RATE = 1000
-SPLIT_COUNT = 5
+ENLARGE_RATE = 500
+SPLIT_COUNT = 990
 
 class TestSmallToLargeProcess(ObjProcessor):
     __name__ = 'TestSmallToLargeProcess'
@@ -82,7 +82,7 @@ class AssertEqual(ObjProcessor):
 
 class TestFlow(ETLGroup):
     def __init__(self):
-        input_storage = PandasStorage(LocalBackend('./data/subgraph/output/'))
+        input_storage = PandasStorage(LocalBackend('./data/parallel/'))
         output_storage = PandasStorage(LocalBackend('./data/parallel/'))
         simple = MapReduce(TestSimple(
             input_storage,
@@ -104,12 +104,10 @@ class TestFlow(ETLGroup):
     @property
     def output_ids(self):
         return []
-    
-
 
 class MemoryIntenseFlow(ETLGroup):
     def __init__(self):
-        src_storage = PandasStorage(LocalBackend('./data/subgraph/output/'))
+        src_storage = PandasStorage(LocalBackend('./data/parallel/'))
         target_storage = PandasStorage(LocalBackend('./data/parallel/'))
         tmp_fs = LocalBackend('./data/parallel/partition/')
         process1 = MapReduce(TestSmallToLargeProcess(
@@ -141,8 +139,8 @@ class MemoryIntenseFlow(ETLGroup):
 
 intense_flow = MemoryIntenseFlow()
 if __name__ == '__main__':
-    TestFlow().execute(sequential=True)
-    TestFlow().execute()
-    TestFlow().execute(max_active_run=1)
-    TestFlow().execute(max_active_run=2)
+    # TestFlow().execute(sequential=True)
+    # TestFlow().execute()
+    # TestFlow().execute(max_active_run=1)
+    # TestFlow().execute(max_active_run=2)
     intense_flow.execute(max_active_run=1)

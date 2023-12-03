@@ -4,15 +4,13 @@ TODO:
     - [X] using vaex storage to enable zero copy (lower RAM usage)
     - [X] Enable setting of max active parallel thread on group level & job level
     - [X] Allow duckdb to support multithread
+    - [ ] Allow vaex divide / merge to be used in low_ram setting
 """
 from typing import List
-import os
-import pandas as pd
 import vaex as vx
-import traceback
 from dill.source import getsource
 from batch_framework.etl import ObjProcessor, ETLGroup, SQLExecutor
-from batch_framework.storage import Storage, VaexStorage, PandasStorage
+from batch_framework.storage import Storage, VaexStorage
 from batch_framework.filesystem import FileSystem
 from batch_framework.rdb import DuckDBBackend
 __all__ = ['MapReduce']
@@ -38,11 +36,11 @@ class MapReduce(ETLGroup):
             
             @property
             def input_ids(self):
-                return [f'{map_name}.{id}.{self._partition_id}.parquet' for id in map.input_ids]
+                return [f'{map_name}_{id}_{self._partition_id}' for id in map.input_ids]
             
             @property
             def output_ids(self):
-                return [f'{map_name}.{id}.{self._partition_id}.parquet'.replace('.', '_') for id in map.output_ids]
+                return [f'{map_name}_{id}_{self._partition_id}'.replace('.', '_') for id in map.output_ids]
             
             def transform(self, inputs: List[input_type], **kwargs) -> List[output_type]:
                 try:
@@ -54,13 +52,15 @@ class MapReduce(ETLGroup):
             
             def start(self, **kwargs):
                 return map.start(**kwargs)
+            
+        mappers = [MapClass(type(self._map._input_storage)(tmp_fs), i) for i in range(parallel_count)]
+        self._mappers = mappers
+        self._partition_preprocessor = AddPartitionKey(map_name, self._map.input_ids, self._map._input_storage._backend, tmp_fs, parallel_count)
         units = [
-            AddPartitionKey(map_name, self._map.input_ids, self._map._input_storage._backend, tmp_fs, parallel_count)
+            self._partition_preprocessor
         ] + [
             EfficientDivide(map_name, id, parallel_count, tmp_fs, tmp_fs) for id in self._map.input_ids
-        ] + [
-            MapClass(type(self._map._input_storage)(tmp_fs), i) for i in range(parallel_count)
-        ] + [
+        ] + self._mappers + [
             EfficientMerge(
                 id,
                 parallel_count, 
@@ -87,27 +87,10 @@ class MapReduce(ETLGroup):
         return self._map.output_ids
 
     def end(self, **kwargs):
-        self._drop_input_tmps()
-        self._drop_partitions(self.input_ids + self.output_ids)
-
-    def _drop_input_tmps(self):
-        for id in self.input_ids:
-            path = self._tmp_fs._directory + f'{self._map_name}.{id}' + f'.full.parquet'
-            MapReduce._drop_partition(path)
-    
-    def _drop_partitions(self, ids: List[str]):
-        for id in ids:
-            for i in range(self._parallel_count):
-                path = self._tmp_fs._directory + f'{self._map_name}.{id}' + f'.{i}.parquet'
-                MapReduce._drop_partition(path)
-
-    @staticmethod
-    def _drop_partition(path):
-        if os.path.exists(path):
-            os.remove(path)
-            print('[drop_partition]', path, 'removed!')
-        else:
-            print('[drop_partition]', path, 'not found!')
+        self._partition_preprocessor.drop_outputs()
+        for mapper in self._mappers:
+            mapper.drop_inputs()
+            mapper.drop_outputs()
 
 
 class AddPartitionKey(SQLExecutor):
@@ -129,7 +112,7 @@ class AddPartitionKey(SQLExecutor):
     
     @property
     def output_ids(self):
-        return [f'{self._map_name}.{id}.full.parquet' for id in self._obj_ids]
+        return [f'{self._map_name}_{id}_full' for id in self._obj_ids]
     
     def sqls(self, **kwargs):
         results = dict()
@@ -147,6 +130,9 @@ class AddPartitionKey(SQLExecutor):
             FROM row_table
             """
         return results
+    
+    
+
 
 class EfficientDivide(ObjProcessor):
     def __init__(self, 
@@ -163,11 +149,11 @@ class EfficientDivide(ObjProcessor):
     
     @property
     def input_ids(self):
-        return [f'{self._map_name}.{self._obj_id}.full.parquet']
+        return [f'{self._map_name}_{self._obj_id}_full'.replace('.', '_')]
     
     @property
     def output_ids(self):
-        return [f'{self._map_name}.{self._obj_id}.{i}.parquet' for i in range(self._divide_count)]
+        return [f'{self._map_name}_{self._obj_id}_{i}' for i in range(self._divide_count)]
 
     def transform(self, inputs: List[vx.DataFrame]) -> List[vx.DataFrame]:
         table = inputs[0]
@@ -190,14 +176,14 @@ class EfficientMerge(SQLExecutor):
     
     @property
     def input_ids(self):
-        return [f'{self._map_name}.{self._obj_id}.{i}.parquet'.replace('.', '_') for i in range(self._divide_count)]
+        return [f'{self._map_name}_{self._obj_id}_{i}' for i in range(self._divide_count)]
 
     @property
     def output_ids(self):
         return [self._obj_id]
 
     def sqls(self, **kwargs):
-        sql = '\nUNION\n'.join([f"(SELECT * FROM {id})" for id in self.input_ids])
+        sql = '\nUNION ALL\n'.join([f"SELECT * FROM {id}" for id in self.input_ids])
         return {
             self._obj_id: sql
         }

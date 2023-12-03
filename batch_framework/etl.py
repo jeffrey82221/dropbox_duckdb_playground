@@ -13,7 +13,7 @@ from threading import Semaphore
 from dill.source import getsource
 import traceback
 import abc
-from .storage import Storage, PyArrowStorage
+from .storage import Storage, PyArrowStorage, VaexStorage
 from .filesystem import FileSystem
 from .rdb import RDB
 
@@ -101,6 +101,14 @@ class ETL:
         # Step4: connect execute to ouput_id
         for output_id in self.output_ids:
             dag.add_edge(self, output_id)
+
+    @abc.abstractmethod
+    def drop_inputs(self):
+        pass
+    
+    @abc.abstractmethod
+    def drop_outputs(self):
+        pass
 
 class DagExecutor:
     """Executing Unit for Tasks in the Dag"""
@@ -209,7 +217,24 @@ class SQLExecutor(ETL):
             self._output_storage = PyArrowStorage(output_fs)
         else:
             self._output_storage = None
+
+        assert all(['.' not in id for id in self.input_ids]), f'using . in SQLExecutor input id is not allowed. See: {self.input_ids}'
+        assert all(['.' not in id for id in self.output_ids]), f'using . in SQLExecutor output id is not allowed. See: {self.output_ids}'
         super().__init__()
+
+    def drop_inputs(self):
+        if self._input_storage is not None:
+            for id in self.input_ids:
+                self._input_storage.drop(id)
+        else:
+            self._rdb.drop(id)
+
+    def drop_outputs(self):
+        if self._output_storage is not None:
+            for id in self.output_ids:
+                self._output_storage.drop(id)
+        else:
+            self._rdb.drop(id)
 
     @abc.abstractmethod
     def sqls(self, **kwargs) -> Dict[str, str]:
@@ -237,24 +262,24 @@ class SQLExecutor(ETL):
         try:
             if self._input_storage is not None:
                 for id in self.input_ids:
-                    if self._input_storage._backend.check_exists(id):
+                    if self._input_storage.check_exists(id):
                         print(f'@{self} Start Registering Input: {id}')
                         cursor.register(id, self._input_storage.download(id))
                         print(f'@{self} End Registering Input: {id}')
-            # Do transform using SQL on RDB
-            for output_id, sql in self.sqls(**kwargs).items():
-                sql_table_id = output_id.replace('.', '_')
-                cursor.execute(f'''
-                CREATE TABLE {sql_table_id} AS ({sql});
-                ''')
-            # Load Table into FileSystem from RDB
+                    else:
+                        raise ValueError(f'{id} does not exists')
             if self._output_storage is not None:
-                for id in self.output_ids:
-                    print(f'@{self} Start Uploading Output: {id}')
-                    sql_table_id = id.replace('.', '_')
-                    table = cursor.execute(f'SELECT * FROM {sql_table_id}').arrow()
-                    self._output_storage.upload(table, id)
-                    print(f'@{self} End Uploading Output: {id}')
+                for output_id, sql in self.sqls(**kwargs).items():
+                    print(f'@{self} Start Uploading Output: {output_id}')
+                    table = cursor.execute(f'SELECT * FROM ({sql})').arrow()
+                    self._output_storage.upload(table, output_id)
+                    print(f'@{self} End Uploading Output: {output_id}')
+            else:
+                for output_id, sql in self.sqls(**kwargs).items():
+                    cursor.execute(f'''
+                    CREATE TABLE {output_id} AS ({sql});
+                    ''')
+
         finally:
             cursor.close()
 
@@ -339,3 +364,11 @@ class ObjProcessor(ETL):
             print(f'@{self} Start Loading Output: {id}')
             self._output_storage.upload(table, id)
             print(f'@{self} End Loading Output: {id}')
+
+    def drop_inputs(self):
+        for id in self.input_ids:
+            self._input_storage.drop(id)
+        
+    def drop_outputs(self):
+        for id in self.output_ids:
+            self._output_storage.drop(id)

@@ -35,7 +35,7 @@ class LatestFeedback(ObjProcessor):
         return ['latest_feedback']
     
     def transform(self, inputs: List[vx.DataFrame], **kwargs) -> List[vx.DataFrame]:
-        if not self._input_storage._backend.check_exists('latest'):
+        if not self._input_storage.check_exists('latest'):
             latest_df = vx.from_pandas(pd.DataFrame.from_records([], columns=['name', 'latest', 'etag']))
             print('latest_feedback created')
         else:
@@ -225,3 +225,14 @@ class Combine(ObjProcessor):
         print(f'Combined Size: {len(result_df)}')
         return [result_df]
     
+class Pass(ObjProcessor):
+    @property
+    def input_ids(self):
+        return ['latest_new']
+    
+    @property
+    def output_ids(self):
+        return ['latest']
+    
+    def transform(self, inputs: List[vx.DataFrame], **kwargs) -> List[vx.DataFrame]:
+        return inputs
