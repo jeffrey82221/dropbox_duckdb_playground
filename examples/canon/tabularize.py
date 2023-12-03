@@ -5,6 +5,7 @@ Convert pandas with JSON column to plain pandas dataframe
 from typing import List, Dict, Union
 import pandas as pd
 import numpy as np
+import json
 from batch_framework.etl import ObjProcessor
 
 class LatestTabularize(ObjProcessor):
@@ -21,6 +22,7 @@ class LatestTabularize(ObjProcessor):
         reqs = []
         urls = []
         for record in inputs[0].to_dict('records'):
+            record['latest'] = json.loads(record['latest'])
             info = LatestTabularize.simplify_record(record)
             _reqs = LatestTabularize.simplify_requires_dist(record)
             _urls = LatestTabularize.simplify_project_urls(record)            
@@ -31,6 +33,9 @@ class LatestTabularize(ObjProcessor):
         package_df = pd.DataFrame(infos)
         requirement_df = pd.DataFrame(reqs)
         urls_df = pd.DataFrame(urls)
+        assert len(package_df) > 0
+        assert len(requirement_df) > 0
+        assert len(urls_df) > 0
         print('Package Table Size:', len(package_df))
         print('Requirement Table Size:', len(requirement_df))
         print('Url Table Size:', len(urls_df))
@@ -75,7 +80,7 @@ class LatestTabularize(ObjProcessor):
             List[Dict]:  List of the simplified dictionary that is not nested
         """
         data = record['latest']['info']['requires_dist']
-        if isinstance(data, np.ndarray):
+        if data is not None:
             return [
                 {
                     'pkg_name': record['name'],

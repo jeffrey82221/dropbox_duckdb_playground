@@ -22,6 +22,7 @@ import requests
 import pandas as pd
 import vaex as vx
 import tqdm
+import json
 from batch_framework.etl import ObjProcessor
 from batch_framework.storage import PandasStorage
 
@@ -99,6 +100,7 @@ class LatestDownloader(ObjProcessor, LatestProcessor):
         assert 'latest' in new_df.columns
         assert 'etag' in new_df.columns
         assert len(new_df.columns) == 3
+        new_df['latest'] = new_df['latest'].map(lambda x: json.dumps(x))
         return [new_df]
     
     def _get_new_package_records(self, names: List[str]) -> pd.DataFrame:
@@ -154,6 +156,7 @@ class LatestUpdator(ObjProcessor, LatestProcessor):
                 if col not in ['name', 'etag']:
                     del df[col]
             new_df = self._get_updated_package_records(df)
+            new_df['latest'] = new_df['latest'].map(lambda x: json.dumps(x))
             return [new_df]
         except Exception as e:
             raise e

@@ -8,9 +8,11 @@ TODO:
 """
 from typing import List
 import vaex as vx
+import pandas as pd
+import pyarrow as pa
 from dill.source import getsource
 from batch_framework.etl import ObjProcessor, ETLGroup, SQLExecutor
-from batch_framework.storage import Storage, VaexStorage
+from batch_framework.storage import Storage, VaexStorage, PandasStorage, PyArrowStorage
 from batch_framework.filesystem import FileSystem
 from batch_framework.rdb import DuckDBBackend
 __all__ = ['MapReduce']
@@ -61,7 +63,7 @@ class MapReduce(ETLGroup):
         ] + [
             EfficientDivide(map_name, id, parallel_count, tmp_fs, tmp_fs) for id in self._map.input_ids
         ] + self._mappers + [
-            EfficientMerge(
+            VaexMerge(
                 id,
                 parallel_count, 
                 tmp_fs,
@@ -165,7 +167,39 @@ class EfficientDivide(ObjProcessor):
             assert len(df) > 0, 'output dataframes of EfficientDivide should not be 0 size.'
             results.append(df[columns])
         return results
+# PyArrowStorage
+class DataFrameMerge(ObjProcessor):
+    def __init__(self, storage_cls, obj_id: str, divide_count: int, input_fs: FileSystem, output_fs: FileSystem, map_name: str=''):
+        self._obj_id = obj_id
+        self._divide_count = divide_count
+        self._map_name = map_name
+        super().__init__(storage_cls(input_fs), storage_cls(output_fs))
 
+    @property
+    def input_ids(self):
+        return [f'{self._map_name}_{self._obj_id}_{i}' for i in range(self._divide_count)]
+
+    @property
+    def output_ids(self):
+        return [self._obj_id]
+
+class PyArrowMerge(DataFrameMerge):
+    def __init__(self, obj_id: str, divide_count: int, input_fs: FileSystem, output_fs: FileSystem, map_name: str=''):
+        super().__init__(PyArrowStorage, obj_id, divide_count, input_fs, output_fs, map_name=map_name)
+    def transform(self, inputs: List[pa.Table], **kwargs) -> List[pa.Table]:
+        return [pa.concat_tables(inputs)]
+    
+class PandasMerge(DataFrameMerge):
+    def __init__(self, obj_id: str, divide_count: int, input_fs: FileSystem, output_fs: FileSystem, map_name: str=''):
+        super().__init__(PandasStorage, obj_id, divide_count, input_fs, output_fs, map_name=map_name)
+    def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
+        return [pd.concat(inputs)]
+    
+class VaexMerge(DataFrameMerge):
+    def __init__(self, obj_id: str, divide_count: int, input_fs: FileSystem, output_fs: FileSystem, map_name: str=''):
+        super().__init__(VaexStorage, obj_id, divide_count, input_fs, output_fs, map_name=map_name)
+    def transform(self, inputs: List[vx.DataFrame], **kwargs) -> List[vx.DataFrame]:
+        return [vx.concat(inputs)]
 
 class EfficientMerge(SQLExecutor):
     def __init__(self, obj_id: str, divide_count: int, input_fs: FileSystem, output_fs: FileSystem, map_name: str=''):
