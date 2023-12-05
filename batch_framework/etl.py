@@ -110,6 +110,14 @@ class ETL:
     def drop_outputs(self):
         pass
 
+    @abc.abstractmethod
+    def drop_input(self, obj_id: str):
+        pass
+    
+    @abc.abstractmethod
+    def drop_output(self, obj_id: str):
+        pass
+
 class DagExecutor:
     """Executing Unit for Tasks in the Dag"""
     def __init__(self, limit_pool: Optional[Semaphore]=None):
@@ -200,6 +208,39 @@ class ETLGroup(ETL):
         for id in self.output_ids:
             dag.add_edge(id, self.end)
 
+    @property
+    def internal_inputs(self) -> Dict[str, ETL]:
+        """
+        Get internal inputs ids and its located ETL units
+        """
+        results = dict()
+        for etl_unit in self.etl_units:
+            for id in etl_unit.input_ids:
+                results[id] = etl_unit
+        for id in self.input_ids:
+            del results[id]
+        return results
+    
+    @property
+    def internal_outputs(self) -> Dict[str, ETL]:
+        """
+        Get internal inputs ids and its located ETL units
+        """
+        results = dict()
+        for etl_unit in self.etl_units:
+            for id in etl_unit.output_ids:
+                results[id] = etl_unit
+        for id in self.output_ids:
+            del results[id]
+        return results
+    
+    def drop_internal_objs(self):
+        for input_id, etl_unit in self.internal_inputs.items():
+            try:
+                etl_unit._drop_input(input_id)
+            except:
+                print(f'input_id: {input_id} drop skipped')
+
 
 class SQLExecutor(ETL):
     """Basic interface for SQL executor
@@ -223,16 +264,24 @@ class SQLExecutor(ETL):
         super().__init__()
 
     def drop_inputs(self):
+        for id in self.input_ids:
+            self._drop_input(id)
+
+    def drop_outputs(self):
+        for id in self.output_ids:
+            self._drop_input(id)
+
+    def _drop_input(self, obj_id: str):
+        assert obj_id in self.input_ids, 'For drop_input on obj_id, it should be in input_ids'
         if self._input_storage is not None:
-            for id in self.input_ids:
-                self._input_storage.drop(id)
+            self._input_storage.drop(obj_id)
         else:
             self._rdb.drop(id)
 
-    def drop_outputs(self):
+    def _drop_output(self, obj_id: str):
+        assert obj_id in self.output_ids, 'For drop_output on obj_id, it should be in output_ids'
         if self._output_storage is not None:
-            for id in self.output_ids:
-                self._output_storage.drop(id)
+            self._output_storage.drop(obj_id)
         else:
             self._rdb.drop(id)
 
@@ -257,8 +306,7 @@ class SQLExecutor(ETL):
         """
         assert set(self.sqls(**kwargs).keys()) == set(self.output_ids), 'sqls key should corresponds to the output_ids'
         # Extract Table and Load into RDB from FileSystem
-        conn = self._rdb.get_conn()
-        cursor = conn.cursor()
+        cursor = self._rdb.get_conn()
         try:
             if self._input_storage is not None:
                 for id in self.input_ids:
@@ -283,8 +331,6 @@ class SQLExecutor(ETL):
         finally:
             cursor.close()
 
-    def end(self, **kwargs):
-        self._rdb.get_conn().close()
 
 class ObjProcessor(ETL):
     """
@@ -372,3 +418,11 @@ class ObjProcessor(ETL):
     def drop_outputs(self):
         for id in self.output_ids:
             self._output_storage.drop(id)
+
+    def _drop_input(self, obj_id: str):
+        assert obj_id in self.input_ids, 'For drop_input on obj_id, it should be in input_ids'
+        self._input_storage.drop(obj_id)
+
+    def _drop_output(self, obj_id: str):
+        assert obj_id in self.output_ids, 'For drop_output on obj_id, it should be in output_ids'
+        self._output_storage.drop(obj_id)

@@ -89,10 +89,7 @@ class MapReduce(ETLGroup):
         return self._map.output_ids
 
     def end(self, **kwargs):
-        self._partition_preprocessor.drop_outputs()
-        for mapper in self._mappers:
-            mapper.drop_inputs()
-            mapper.drop_outputs()
+        self.drop_internal_objs()
 
 
 class AddPartitionKey(SQLExecutor):

@@ -125,16 +125,28 @@ class PandasStorage(DataFrameStorage):
             buff = io.BytesIO()
             dataframe.to_parquet(buff)
             self._backend.upload_core(buff, obj_id + '.parquet')
+        elif isinstance(self._backend, RDB):
+            cursor = self._backend.get_conn()
+            try:
+                cursor.register(obj_id, dataframe)
+            finally:
+                cursor.close()
         else:
-            raise TypeError('backend should be FileSystem')
+            raise TypeError(f'backend should be FileSystem/RDB, but it is {self._backend}')
 
     def download(self, obj_id: str) -> pd.DataFrame:
         if isinstance(self._backend, FileSystem):
             buff = self._backend.download_core(obj_id + '.parquet')
             result = pd.read_parquet(buff, engine='pyarrow')
             return result
+        elif isinstance(self._backend, RDB):
+            cursor = self._backend.get_conn()
+            try:
+                return cursor.execute(f'SELECT * FROM {obj_id};').df()
+            finally:
+                cursor.close()
         else:
-            raise TypeError('backend should be FileSystem')
+            raise TypeError(f'backend should be FileSystem, but it is {self._backend}')
 
 class PyArrowStorage(DataFrameStorage):
     """Storage of pyarrow Table
@@ -144,15 +156,27 @@ class PyArrowStorage(DataFrameStorage):
             buff = io.BytesIO()
             pq.write_table(dataframe, buff)
             self._backend.upload_core(buff, obj_id + '.parquet')
+        elif isinstance(self._backend, RDB):
+            cursor = self._backend.get_conn()
+            try:
+                cursor.register(obj_id, dataframe)
+            finally:
+                cursor.close()
         else:
-            raise TypeError('backend should be FileSystem')
+            raise TypeError(f'backend should be FileSystem, but it is {self._backend}')
 
     def download(self, obj_id: str) -> pa.Table:
         if isinstance(self._backend, FileSystem):
             buff = self._backend.download_core(obj_id + '.parquet')
             return pq.read_table(buff)
+        elif isinstance(self._backend, RDB):
+            cursor = self._backend.get_conn()
+            try:
+                return cursor.execute(f'SELECT * FROM {obj_id};').arrow()
+            finally:
+                cursor.close()
         else:
-            raise TypeError('backend should be FileSystem')
+            raise TypeError(f'backend should be FileSystem, but it is {self._backend}')
 
 class VaexStorage(DataFrameStorage):
     """Storage of Vaex DataFrame

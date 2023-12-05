@@ -140,7 +140,7 @@ class MemoryIntenseFlow(ETLGroup):
 intense_flow = MemoryIntenseFlow()
 if __name__ == '__main__':
     # TestFlow().execute(sequential=True)
-    # TestFlow().execute()
+    TestFlow().execute()
     # TestFlow().execute(max_active_run=1)
     # TestFlow().execute(max_active_run=2)
     intense_flow.execute(max_active_run=1)

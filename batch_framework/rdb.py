@@ -45,12 +45,6 @@ class RDB(Backend):
         Create New DB connection object
         """
         raise NotImplementedError
-    
-    def close(self):
-        """
-        Close db connection
-        """
-        self._conn.close()
 
 class DuckDBBackend(RDB):
     def __init__(self, persist_fs: Optional[FileSystem]=None, db_name: Optional[str]=None):
@@ -79,7 +73,7 @@ class DuckDBBackend(RDB):
         return self._conn
         
     def get_conn(self):
-        return self.conn
+        return self.conn.cursor()
 
     def register(self, table_name: str, table: object):
         conn = self.conn
@@ -96,11 +90,6 @@ class DuckDBBackend(RDB):
         except BaseException as e:
             raise ValueError(sql) from e
 
-    def close(self):
-        conn = self.conn
-        conn.close()
-        self._conn = None
-    
     def commit(self):
         """
         Upload current status of duckdb to remote file system

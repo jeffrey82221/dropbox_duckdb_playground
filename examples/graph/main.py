@@ -22,7 +22,8 @@ class GraphDataPlatform(ETLGroup):
                  canon_fs: FileSystem, subgraph_fs: FileSystem, 
                  node_fs: FileSystem, link_fs: FileSystem, 
                  er_meta_list: List[ERMeta]=[],
-                 mapping_fs: Optional[FileSystem]=None, model_fs: Optional[FileSystem]=None, 
+                 mapping_fs: Optional[FileSystem]=None, 
+                 model_fs: Optional[FileSystem]=None, 
                  rdb: RDB=DuckDBBackend(), 
                  messy_pairing_worker_cnt: int=10
                 ):
@@ -65,6 +66,10 @@ class GraphDataPlatform(ETLGroup):
     @property
     def input_ids(self):
         return self._input_ids
+    
+    @property
+    def external_input_ids(self) -> List[str]:
+        return self.input_ids
     
     @property
     def output_ids(self):

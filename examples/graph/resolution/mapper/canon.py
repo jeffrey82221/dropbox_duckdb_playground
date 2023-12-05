@@ -1,3 +1,8 @@
+"""
+TODO:
+    - [ ] Understand and Tune n_matches in gazeteer.search
+    - [ ] Allow Map Reduce to reduce memory usage.
+"""
 from typing import List
 import pandas as pd
 import dedupe
@@ -27,7 +32,8 @@ class CanonMatcher(Messy2Canon, MatcherBase):
         print('Finish Extracting Messy and Canon Feature...')
         self._gazetteer.index(canonical)
         print('Finish Indexing...')
-        match_generator = self._gazetteer.search(messy, n_matches=2, generator=True)
+        match_generator = self._gazetteer.search(messy, n_matches=2, 
+                                                 generator=True)
         print('Finish Search...')
         messy2canon_mapping = []
         for messy_id, matches in match_generator:

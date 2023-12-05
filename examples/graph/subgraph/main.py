@@ -17,16 +17,12 @@ class SubgraphExtractor(ETLGroup):
             metagraph=metagraph, rdb=rdb, input_fs=input_fs, output_fs=output_fs)
         node_op = NodeExtractor(
             metagraph=metagraph, rdb=rdb, input_fs=input_fs, output_fs=output_fs)
-        val_op = Validator(metagraph, PandasStorage(rdb))
+        val_op = Validator(metagraph, PandasStorage(output_fs))
         super().__init__(link_op, node_op, val_op)
 
     @property
     def input_ids(self) -> List[str]:
         return self._metagraph.input_ids
-    
-    @property
-    def external_input_ids(self) -> List[str]:
-        return self.input_ids
     
     @property
     def output_ids(self) -> List[str]:

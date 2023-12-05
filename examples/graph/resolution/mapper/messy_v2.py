@@ -6,7 +6,6 @@ import io
 import csv
 import itertools
 import igraph as ig
-import os
 from batch_framework.filesystem import FileSystem, LocalBackend
 from batch_framework.storage import PandasStorage
 from batch_framework.etl import SQLExecutor, ETLGroup
@@ -85,22 +84,7 @@ class MessyMatcher(ETLGroup):
         print(path, 'created')
         
     def end(self, **kwargs):
-        for id in [
-                f'{self.label}_feature',
-                f'{self.label}_block',
-                f'{self.label}_entity_map',
-                f'{self.label}_id_pairs'
-            ]:
-            path = self._mapping_fs._directory + id
-            MessyMatcher._drop_tmp(path)
-
-    @staticmethod    
-    def _drop_tmp(path):
-        if os.path.exists(path):
-            os.remove(path)
-            print('[_drop_tmp]', path, 'dropped')
-        else:
-            print('[_drop_tmp]', path, 'not found')
+        self.drop_internal_objs()
 
 class Readable(object):
     """
@@ -145,7 +129,6 @@ class MessyFeatureEngineer(MessyOnly, MatcherBase):
     @property
     def output_ids(self):
         return [f'{self.label}_feature']
-    
     
 class MessyBlocker(MessyOnly, MatcherBase):
     """Produce Node Block Table using Dedupe Package
@@ -331,7 +314,6 @@ class MessyPairSelector(MessyOnly, MatcherBase):
     @property
     def output_ids(self):
         return [f'{self.label}_id_pairs']
-
 
 class MessyClusterer(MessyOnly, MatcherBase):
     """Find Connected Components"""

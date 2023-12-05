@@ -4,7 +4,6 @@ TODO:
     -> Build Entity Resolution Class
 - [ ] Enable no-canon workflow in mapping generator
 """
-import os
 from batch_framework.storage import PandasStorage
 from batch_framework.filesystem import FileSystem
 from batch_framework.etl import SQLExecutor, ETLGroup
@@ -49,8 +48,8 @@ class MappingGenerator(ETLGroup):
                     item,
                     column,
                     rdb,
-                    subgraph_fs,
-                    subgraph_fs
+                    subgraph_fs=subgraph_fs,
+                    mapping_fs=mapping_fs
                 )
             )
         super().__init__(
@@ -67,20 +66,7 @@ class MappingGenerator(ETLGroup):
         return self._meta.output_ids
 
     def end(self, **kwargs):
-        for id in [
-                f'mapper_{self._meta.messy_node}2{self._meta.canon_node}',
-                f'mapper_{self._meta.messy_node}'
-            ]:
-            path = self._mapping_fs._directory + id
-            MessyMatcher._drop_tmp(path)
-
-    @staticmethod    
-    def _drop_tmp(path):
-        if os.path.exists(path):
-            os.remove(path)
-            print('[_drop_tmp]', path, 'dropped')
-        else:
-            print('[_drop_tmp]', path, 'not found')
+        self.drop_internal_objs()
 
 
 class MappingCombiner(SQLExecutor):
@@ -90,7 +76,7 @@ class MappingCombiner(SQLExecutor):
     def __init__(self, meta: ERMeta, rdb: RDB, workspace_fs: FileSystem):
         self._workspace_fs = workspace_fs
         self._meta = meta
-        super().__init__(rdb, input_fs=workspace_fs)
+        super().__init__(rdb, input_fs=workspace_fs, output_fs=workspace_fs)
         
     @property
     def input_ids(self):
