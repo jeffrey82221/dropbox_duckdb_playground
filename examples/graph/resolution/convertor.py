@@ -89,8 +89,8 @@ class _IDConvertor(SQLExecutor):
                 SELECT
                     t2.new_id AS {self._target_column},
                     t1.* EXCLUDE ({self._target_column})
-                FROM {self._source_item} AS t1
-                LEFT JOIN mapper_{self._messy_node}_clean AS t2
+                FROM {self.input_ids[0]} AS t1
+                LEFT JOIN {self.input_ids[1]} AS t2
                 ON t1.{self._target_column} = t2.messy_id
             """
         }
