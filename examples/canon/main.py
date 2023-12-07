@@ -21,19 +21,33 @@ from .crawl import (
 from .tabularize import LatestTabularize
 
 class SimplePyPiCanonicalize(ETLGroup):
-    def __init__(self, raw_df: LocalBackend, tmp_fs: LocalBackend, output_fs: LocalBackend, partition_fs: LocalBackend, parallel_count: int, test_count: Optional[int]=None, do_update: bool=True):
+    def __init__(self, raw_df: LocalBackend, 
+                 tmp_fs: LocalBackend, 
+                 output_fs: LocalBackend, 
+                 partition_fs: LocalBackend, 
+                 download_worker_count: int,
+                 upload_worker_count: int, 
+                 test_count: Optional[int]=None, 
+                 do_update: bool=True):
         self._tmp_fs = tmp_fs
         units = [
             # Crawl Start
             LatestFeedback(input_storage=VaexStorage(raw_df), output_storage=VaexStorage(tmp_fs)),
             PyPiNameTrigger(PandasStorage(tmp_fs)),
             NewPackageExtractor(VaexStorage(tmp_fs), test_count=test_count),
-            MapReduce(LatestDownloader(PandasStorage(tmp_fs)), parallel_count, partition_fs)
+            MapReduce(
+                LatestDownloader(PandasStorage(tmp_fs)), 
+                    download_worker_count, 
+                    partition_fs
+            )
         ]
         if do_update:
             units.extend([
                 LatestUpdatorInputReduce(VaexStorage(tmp_fs)),
-                MapReduce(LatestUpdator(PandasStorage(tmp_fs)), parallel_count, partition_fs),
+                MapReduce(LatestUpdator(PandasStorage(tmp_fs)), 
+                          upload_worker_count, 
+                          partition_fs
+                ),
                 Combine(input_storage=PandasStorage(tmp_fs), output_storage=PandasStorage(raw_df))
             ])
         else:

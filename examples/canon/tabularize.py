@@ -4,7 +4,6 @@ Convert pandas with JSON column to plain pandas dataframe
 """
 from typing import List, Dict, Union
 import pandas as pd
-import numpy as np
 import json
 from batch_framework.etl import ObjProcessor
 

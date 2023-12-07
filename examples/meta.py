@@ -98,14 +98,23 @@ metagraph = MetaGraph(
         """,
         # License Node
         'license': """
+        WITH count_table AS (
+            SELECT
+                license,
+                count(*) AS count
+            FROM latest_package
+            GROUP BY license
+        )
         SELECT
             DISTINCT ON (license)
             HASH(license) AS node_id,
             license AS name
-        FROM latest_package
-        WHERE license IS NOT NULL 
+        FROM count_table
+        WHERE license IS NOT NULL
             AND license <> 'UNKNOWN'
             AND license <> 'LICENSE.txt'
+            AND license <> ''
+            AND count >= 2
         """,
         # Docs URL Node
         'docs_url': """
@@ -167,14 +176,40 @@ metagraph = MetaGraph(
         """,
         # Has License Link
         'has_license': """
+        WITH 
+            count_table AS (
+                SELECT
+                    license,
+                    count(*) AS count
+                FROM latest_package
+                GROUP BY license
+            ),
+            node_table AS (
+                SELECT
+                    DISTINCT ON (license)
+                    HASH(license) AS node_id
+                FROM count_table
+                WHERE license IS NOT NULL
+                    AND license <> 'UNKNOWN'
+                    AND license <> 'LICENSE.txt'
+                    AND license <> ''
+                    AND count >= 2
+            ),
+            link_table AS (
+                SELECT 
+                    DISTINCT ON (license, pkg_name)
+                    HASH(pkg_name) AS from_id,
+                    HASH(license) AS to_id,
+                FROM latest_package
+            )
         SELECT
-            DISTINCT ON (license, pkg_name)
-            HASH(pkg_name) AS from_id,
-            HASH(license) AS to_id
-        FROM latest_package
-        WHERE license IS NOT NULL 
-            AND license <> 'UNKNOWN'
-            AND license <> 'LICENSE.txt'
+            from_id,
+            to_id
+        FROM link_table
+        WHERE EXISTS (
+            SELECT * FROM node_table 
+            WHERE node_table.node_id = link_table.to_id
+        )
         """,
         # Docs URL Node
         'has_docs_url': """

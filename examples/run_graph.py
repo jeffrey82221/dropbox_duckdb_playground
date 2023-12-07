@@ -33,5 +33,4 @@ gdp = GraphDataPlatform(
 )
 
 if __name__ == '__main__':
-    gdp.execute(sequential=True)
-    # gdp.execute(max_active_run=2)
+    gdp.execute(max_active_run=2)
