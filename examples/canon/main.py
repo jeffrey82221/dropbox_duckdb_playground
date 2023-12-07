@@ -7,7 +7,7 @@ from typing import Optional
 from batch_framework.filesystem import LocalBackend
 from batch_framework.storage import PandasStorage, VaexStorage
 from batch_framework.etl import ETLGroup
-from parallize import MapReduce
+from batch_framework.parallize import MapReduce
 from .trigger import PyPiNameTrigger
 from .crawl import (
     LatestFeedback,

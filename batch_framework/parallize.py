@@ -1,10 +1,5 @@
-"""Divide and conquer module 
-TODO:
-    - [X] making this a class decorator
-    - [X] using vaex storage to enable zero copy (lower RAM usage)
-    - [X] Enable setting of max active parallel thread on group level & job level
-    - [X] Allow duckdb to support multithread
-    - [ ] Allow vaex divide / merge to be used in low_ram setting
+"""
+Divide and conquer module 
 """
 from typing import List
 import vaex as vx
@@ -15,6 +10,7 @@ from batch_framework.etl import ObjProcessor, ETLGroup, SQLExecutor
 from batch_framework.storage import Storage, VaexStorage, PandasStorage, PyArrowStorage
 from batch_framework.filesystem import FileSystem
 from batch_framework.rdb import DuckDBBackend
+
 __all__ = ['MapReduce']
 
 class MapReduce(ETLGroup):
@@ -93,6 +89,7 @@ class MapReduce(ETLGroup):
 
 
 class AddPartitionKey(SQLExecutor):
+    """Adding Automic Partition Key before Dividing Input Tables"""
     def __init__(self, 
                  map_name: str,
                  obj_ids: List[str], 
@@ -134,6 +131,7 @@ class AddPartitionKey(SQLExecutor):
 
 
 class EfficientDivide(ObjProcessor):
+    """Divide Table for MapReduce"""
     def __init__(self, 
                  map_name: str,
                  obj_id: str, 

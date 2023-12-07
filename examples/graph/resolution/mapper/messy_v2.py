@@ -10,11 +10,11 @@ from batch_framework.filesystem import FileSystem, LocalBackend
 from batch_framework.storage import PandasStorage
 from batch_framework.etl import SQLExecutor, ETLGroup
 from batch_framework.rdb import RDB
-
+from batch_framework.parallize import MapReduce
 from .base import MatcherBase
 from ..base import MessyOnly
 from ..meta import ERMeta
-from parallize import MapReduce
+
 
 class MessyMatcher(ETLGroup):
     """
