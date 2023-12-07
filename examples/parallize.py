@@ -42,7 +42,7 @@ class MapReduce(ETLGroup):
             
             @property
             def output_ids(self):
-                return [f'{map_name}_{id}_{self._partition_id}'.replace('.', '_') for id in map.output_ids]
+                return [f'{map_name}_{id}_{self._partition_id}' for id in map.output_ids]
             
             def transform(self, inputs: List[input_type], **kwargs) -> List[output_type]:
                 try:
@@ -148,7 +148,7 @@ class EfficientDivide(ObjProcessor):
     
     @property
     def input_ids(self):
-        return [f'{self._map_name}_{self._obj_id}_full'.replace('.', '_')]
+        return [f'{self._map_name}_{self._obj_id}_full']
     
     @property
     def output_ids(self):
