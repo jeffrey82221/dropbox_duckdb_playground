@@ -245,7 +245,7 @@ metagraph = MetaGraph(
     }
 )
 
-er_meta = ERMeta(
+er_meta_requirement = ERMeta(
     subgraphs=subgraphs,
     messy_node='requirement',
     dedupe_fields=[
@@ -266,5 +266,20 @@ er_meta = ERMeta(
         'before_whitespace': record['name'],
         'before_upper_bracket': record['name'],
         'before_marks': record['name']
+    }
+)
+
+er_meta_license = ERMeta(
+    subgraphs=subgraphs,
+    messy_node='license',
+    dedupe_fields=[
+        {'field': 'title', 'type': 'String'},
+        {'field': 'title_n_first_line', 'type': 'String'},
+        {'field': 'more_lines', 'type': 'String', 'crf': True}
+    ],
+    messy_lambda=lambda record: {
+        'title': '<start> ' + record['name'].split('.')[0],
+        'title_n_first_line': '<start> ' + '.\n'.join(record['name'].split('.')[:2]),
+        'more_lines': '<start> ' + '.\n'.join(record['name'].split('.')[:5])
     }
 )

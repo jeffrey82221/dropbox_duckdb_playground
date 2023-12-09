@@ -44,7 +44,7 @@ class ERBase(ObjProcessor):
 
     @property
     def train_file_name(self):
-        return f'{self.label}.json'
+        return f'{self.label}_train'
     
     @property
     def model_file_name(self):

@@ -17,7 +17,7 @@ Build Flow of:
 from batch_framework.filesystem import LocalBackend
 from batch_framework.rdb import DuckDBBackend
 from graph import GraphDataPlatform
-from meta import metagraph, er_meta
+from meta import metagraph, er_meta_license, er_meta_requirement
 
 gdp = GraphDataPlatform(
     metagraph=metagraph,
@@ -25,7 +25,7 @@ gdp = GraphDataPlatform(
     subgraph_fs = LocalBackend('./data/subgraph/output/'),
     node_fs = LocalBackend('./data/graph/nodes/'),
     link_fs = LocalBackend('./data/graph/links/'),
-    er_meta_list=[er_meta],
+    er_meta_list=[er_meta_license, er_meta_requirement],
     mapping_fs = LocalBackend('./data/mapping/'),
     model_fs = LocalBackend('./data/model/'),
     rdb=DuckDBBackend(),

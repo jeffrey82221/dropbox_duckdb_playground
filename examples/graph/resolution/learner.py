@@ -1,5 +1,5 @@
 import abc
-from typing import List, Dict
+from typing import List, Dict, Union
 import pandas as pd
 import dedupe
 import json
@@ -23,14 +23,14 @@ class MatchLearnerBase(ERBase):
         """
         Load old training data in the beginning
         """
-        if self._output_storage._backend.check_exists(self.train_file_name):
-            self._training_file = self._output_storage._backend.download_core(self.train_file_name)
+        if self._output_storage.check_exists(self.train_file_name):
+            self._training_file = self._output_storage._backend.download_core(self.train_file_name + '.json')
             self._training_file.seek(0)
             print(f'Training Data Loaded from {self.train_file_name}')
         else:
             self._training_file = None
 
-    def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[Dict]:
+    def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[Union[Dict, List]]:
         self.prepare_training(inputs)
         while True:
             dedupe.console_label(self._deduper)
@@ -43,6 +43,7 @@ class MatchLearnerBase(ERBase):
             else:
                 continue
         # Generate JSON format Training Data
+        print('Generating Json')
         updated_train = io.StringIO()
         self._deduper.write_training(updated_train)
         updated_train.seek(0)
