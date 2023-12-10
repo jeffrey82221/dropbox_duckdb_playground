@@ -29,8 +29,8 @@ gdp = GraphDataPlatform(
     mapping_fs = LocalBackend('./data/mapping/'),
     model_fs = LocalBackend('./data/model/'),
     rdb=DuckDBBackend(),
-    messy_pairing_worker_cnt=100
+    messy_pairing_worker_cnt=1000
 )
 
 if __name__ == '__main__':
-    gdp.execute(max_active_run=2)
+    gdp.execute(max_active_run=1)
