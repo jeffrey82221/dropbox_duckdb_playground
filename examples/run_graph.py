@@ -33,7 +33,7 @@ gdp = GraphDataPlatform(
     mapping_fs = LocalBackend('./data/mapping/'),
     model_fs = LocalBackend('./data/model/'),
     rdb=DuckDBBackend(),
-    messy_pairing_worker_cnt=100
+    messy_pairing_worker_cnt=10
 )
 
 if __name__ == '__main__':
