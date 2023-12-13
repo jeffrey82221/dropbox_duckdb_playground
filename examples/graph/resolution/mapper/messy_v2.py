@@ -124,7 +124,6 @@ class MessyFeatureEngineer(MessyOnly, MatcherBase):
     
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
         table = pd.DataFrame.from_dict(self.feature_generation(inputs[0].to_dict('records')))
-        print(table)
         assert len(table) == len(inputs[0])
         origin_node_ids = set(inputs[0].node_id.tolist())
         processed_node_ids = set(table.node_id.tolist())

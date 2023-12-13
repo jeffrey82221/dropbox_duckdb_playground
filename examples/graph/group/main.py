@@ -6,22 +6,22 @@ from .groupers import NodeGrouper, LinkGrouper
 from .meta import GroupingMeta
 
 class GraphGrouper(ETLGroup):
-    def __init__(self, meta: GroupingMeta, rdb: RDB, input_fs: FileSystem, node_fs: FileSystem, link_fs: FileSystem):
+    def __init__(self, meta: GroupingMeta, rdb: RDB, input_fs: FileSystem, output_fs: FileSystem):
         node_grouper = NodeGrouper(
             meta=meta,
             rdb=rdb,
             input_fs=input_fs,
-            output_fs=node_fs
+            output_fs=output_fs
         )
         link_grouper = LinkGrouper(
             meta=meta,
             rdb=rdb,
             input_fs=input_fs,
-            output_fs=link_fs
+            output_fs=output_fs
         )
         self._meta = meta
-        self._inputs = meta.input_nodes + meta.input_links
-        self._outputs = meta.output_nodes + meta.output_links
+        self._inputs = node_grouper.input_ids + link_grouper.input_ids
+        self._outputs = node_grouper.output_ids + link_grouper.output_ids
         super().__init__(node_grouper, link_grouper)
 
     @property

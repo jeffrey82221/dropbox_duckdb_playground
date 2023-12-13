@@ -20,7 +20,7 @@ class GraphDataPlatform(ETLGroup):
     """
     def __init__(self, metagraph: MetaGraph, 
                  canon_fs: FileSystem, subgraph_fs: FileSystem, 
-                 node_fs: FileSystem, link_fs: FileSystem, 
+                 output_fs: FileSystem,
                  er_meta_list: List[ERMeta]=[],
                  mapping_fs: Optional[FileSystem]=None, 
                  model_fs: Optional[FileSystem]=None, 
@@ -44,8 +44,7 @@ class GraphDataPlatform(ETLGroup):
             meta=grouping_meta,
             rdb=rdb,
             input_fs=subgraph_fs,
-            node_fs=node_fs,
-            link_fs=link_fs
+            output_fs=output_fs
         )
         args = [subgraph_extractor, grouper]
         self._input_ids = subgraph_extractor.input_ids

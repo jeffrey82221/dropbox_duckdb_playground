@@ -46,6 +46,29 @@ class MetaGraph:
         self.__node_grouping_sqls = node_grouping_sqls
         self.__link_grouping_sqls = link_grouping_sqls
 
+    @property
+    def triplets(self) -> Dict[str, Tuple[str, str]]:
+        results = dict()
+        node_grouping = copy.deepcopy(self.node_grouping)
+        link_grouping = copy.deepcopy(self.link_grouping)
+        for link, link_children in link_grouping.items():
+            link_child = link_children[0]
+            src_child_node = self._subgraphs[link_child][0]
+            dest_child_node = self._subgraphs[link_child][1]
+            src_node = MetaGraph.get_parent_item_by_child(node_grouping, src_child_node)
+            dest_node = MetaGraph.get_parent_item_by_child(node_grouping, dest_child_node)
+            results[link] = (src_node, dest_node)
+        return results
+    
+    @staticmethod
+    def get_parent_item_by_child(grouping, target_child: str):
+        for group, children in grouping.items():
+            for child in children:
+                if child == target_child:
+                    return group
+        raise ValueError(f'cannot find target_child {target_child} in grouping: {grouping}')
+    
+    @property
     def subgraphs(self):
         return self._subgraphs
     
