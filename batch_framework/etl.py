@@ -87,20 +87,23 @@ class ETL:
         """Connecting input_ids, output_ids and execution method
         as nodes into dag.
         """
-        # Step0: add external_ids to dag
-        for id in self.external_input_ids:
-            dag.add_vertex(id)
-        # Step1: add execute to dag
-        dag.add_vertex(self)
-        # Step2: connect input_id to execute
-        for input_id in self.input_ids:
-            dag.add_edge(input_id, self)
-        # Step3: add all output_ids into dag
-        for output_id in self.output_ids:
-            dag.add_vertex(output_id)
-        # Step4: connect execute to ouput_id
-        for output_id in self.output_ids:
-            dag.add_edge(self, output_id)
+        try:
+            # Step0: add external_ids to dag
+            for id in self.external_input_ids:
+                dag.add_vertex(id)
+            # Step1: add execute to dag
+            dag.add_vertex(self)
+            # Step2: connect input_id to execute
+            for input_id in self.input_ids:
+                dag.add_edge(input_id, self)
+            # Step3: add all output_ids into dag
+            for output_id in self.output_ids:
+                dag.add_vertex(output_id)
+            # Step4: connect execute to ouput_id
+            for output_id in self.output_ids:
+                dag.add_edge(self, output_id)
+        except BaseException as e:
+            raise ValueError(f'Dag Build Error on {self}') from e
 
     @abc.abstractmethod
     def drop_inputs(self):

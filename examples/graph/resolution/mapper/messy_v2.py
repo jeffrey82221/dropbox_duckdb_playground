@@ -21,14 +21,16 @@ class MessyMatcher(ETLGroup):
     Input Messy Node Table 
     Output a Messy->Cluster Mapping Table
     """
-    def __init__(self, meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB, pairing_worker_count: int = 10, threshold=0.5):
+    def __init__(self, meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB, pairing_worker_count: int = 10, threshold=0.5, take_filtered=True):
         self._mapping_fs = mapping_fs
+        self._take_filtered = take_filtered
         self._partition_fs = LocalBackend(f'{self._mapping_fs._directory}partition/')
         messy_feature_engineer = MessyFeatureEngineer(
             meta,
             PandasStorage(subgraph_fs), 
             PandasStorage(mapping_fs),
-            model_fs=None
+            model_fs=None,
+            take_filtered=self._take_filtered
         )
         messy_blocker = MessyBlocker(
             meta,
@@ -68,7 +70,10 @@ class MessyMatcher(ETLGroup):
 
     @property
     def input_ids(self):
-        return [self._meta.messy_node]
+        if self._take_filtered:
+            return [self._meta.messy_node + '_filtered']
+        else:
+            return [self._meta.messy_node]
     
     @property
     def output_ids(self):
@@ -111,6 +116,12 @@ class MessyFeatureEngineer(MessyOnly, MatcherBase):
     Input node table 
     Output node feature table
     """
+    def __init__(self, mapping_meta: ERMeta, input_storage: PandasStorage, output_storage: PandasStorage, model_fs: FileSystem, threshold: float=0.25, take_filtered=True):
+        self._take_filtered = take_filtered
+        super().__init__(mapping_meta, input_storage, output_storage, model_fs=model_fs)
+        self._threshold = threshold
+        
+    
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
         table = pd.DataFrame.from_dict(self.feature_generation(inputs[0].to_dict('records')))
         print(table)
@@ -126,6 +137,13 @@ class MessyFeatureEngineer(MessyOnly, MatcherBase):
             result['node_id'] = record['node_id']
             yield result
 
+    @property
+    def input_ids(self):
+        if self._take_filtered:
+            return [self._meta.messy_node + '_filtered']
+        else:
+            return [self._meta.messy_node]
+    
     @property
     def output_ids(self):
         return [f'{self.label}_feature']

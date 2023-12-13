@@ -13,6 +13,10 @@ Build Flow of:
 - [X] ERMeta(s) should take subgraphs as __init__ input for finding messy link/node.
 - [X] ERMeta when attach with a GroupingMeta, should generate related IDConvertor(s).
     and produce a revised GroupingMeta.
+- [-] Another way of entity resolution is to do it between canon and graph grouping layer
+    ( Canon Layer -> ER Layer -> Graph Aggregation )
+- [ ] Allow Entity Resolution to Store Process Time of Messy Nodes 
+    and to pairing only the incoming new nodes.     
 """
 from batch_framework.filesystem import LocalBackend
 from batch_framework.rdb import DuckDBBackend
@@ -29,7 +33,7 @@ gdp = GraphDataPlatform(
     mapping_fs = LocalBackend('./data/mapping/'),
     model_fs = LocalBackend('./data/model/'),
     rdb=DuckDBBackend(),
-    messy_pairing_worker_cnt=1000
+    messy_pairing_worker_cnt=100
 )
 
 if __name__ == '__main__':
