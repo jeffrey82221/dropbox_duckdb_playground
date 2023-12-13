@@ -244,6 +244,8 @@ metagraph = MetaGraph(
         """
     }
 )
+print(metagraph.link_grouping)
+print(metagraph.triplets)
 
 er_meta_requirement = ERMeta(
     subgraphs=subgraphs,
