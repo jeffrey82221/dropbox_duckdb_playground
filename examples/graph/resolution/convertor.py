@@ -87,7 +87,7 @@ class _IDConvertor(SQLExecutor):
         return {
             self.output_ids[0]: f"""
                 SELECT
-                    t2.new_id AS {self._target_column},
+                    COALESCE(t2.new_id, t1.{self._target_column}) AS {self._target_column},
                     t1.* EXCLUDE ({self._target_column})
                 FROM {self.input_ids[0]} AS t1
                 LEFT JOIN {self.input_ids[1]} AS t2
