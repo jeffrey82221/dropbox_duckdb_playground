@@ -1,9 +1,11 @@
 from typing import List
 from batch_framework.filesystem import FileSystem
+from batch_framework.storage import PandasStorage
 from batch_framework.etl import ETLGroup
 from batch_framework.rdb import RDB
 from .groupers import NodeGrouper, LinkGrouper
 from .meta import GroupingMeta
+from .validate import Validator
 
 class GraphGrouper(ETLGroup):
     def __init__(self, meta: GroupingMeta, rdb: RDB, input_fs: FileSystem, output_fs: FileSystem):
@@ -22,11 +24,9 @@ class GraphGrouper(ETLGroup):
         self._meta = meta
         self._inputs = node_grouper.input_ids + link_grouper.input_ids
         self._outputs = node_grouper.output_ids + link_grouper.output_ids
-        super().__init__(node_grouper, link_grouper)
+        validator = Validator(self._meta, PandasStorage(output_fs))
+        super().__init__(node_grouper, link_grouper, validator)
 
-    @property
-    def external_input_ids(self) -> List[str]:
-        return self._inputs
     
     @property
     def input_ids(self):

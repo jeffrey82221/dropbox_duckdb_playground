@@ -264,6 +264,10 @@ class SQLExecutor(ETL):
 
         assert all(['.' not in id for id in self.input_ids]), f'using . in SQLExecutor input id is not allowed. See: {self.input_ids}'
         assert all(['.' not in id for id in self.output_ids]), f'using . in SQLExecutor output id is not allowed. See: {self.output_ids}'
+        for id in self.output_ids:
+            assert id in self.sqls(), f'output_id {id} does not have corresponding sql'
+        for key in self.sqls():
+            assert key in self.output_ids, f'sql of field {key} does not have corresponding output_id'
         super().__init__()
 
     def drop_inputs(self):

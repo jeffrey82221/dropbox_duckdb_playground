@@ -39,16 +39,7 @@ class GraphDataPlatform(ETLGroup):
             input_fs=canon_fs, 
             output_fs=subgraph_fs
         )
-        # 2. Group Subgraphs into Final Graph
-        grouper = GraphGrouper(
-            meta=grouping_meta,
-            rdb=rdb,
-            input_fs=subgraph_fs,
-            output_fs=output_fs
-        )
-        args = [subgraph_extractor, grouper]
-        self._input_ids = subgraph_extractor.input_ids
-        self._output_ids = grouper.output_ids
+        args = [subgraph_extractor]
         # Insert Entity Resolutions to the DataFlow
         for er_meta in er_meta_list:
             mapping = MappingGenerator(
@@ -60,6 +51,16 @@ class GraphDataPlatform(ETLGroup):
                 messy_pairing_worker_cnt=messy_pairing_worker_cnt
             )
             args.append(mapping)
+        # 2. Group Subgraphs into Final Graph
+        grouper = GraphGrouper(
+            meta=grouping_meta,
+            rdb=rdb,
+            input_fs=subgraph_fs,
+            output_fs=output_fs
+        )
+        args.append(grouper)
+        self._input_ids = subgraph_extractor.input_ids
+        self._output_ids = grouper.output_ids
         super().__init__(*args)
 
     @property

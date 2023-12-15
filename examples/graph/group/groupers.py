@@ -17,7 +17,7 @@ class NodeGrouper(SQLExecutor):
     
     @property
     def output_ids(self):
-        return [f'node_{n}' for n in self._meta.output_nodes]
+        return self._meta.output_nodes
     
     def sqls(self, **kwargs):
         return self._meta.node_grouping_sqls
@@ -37,7 +37,7 @@ class LinkGrouper(SQLExecutor):
     
     @property
     def output_ids(self):
-        return [f'link_{n}' for n in self._meta.output_links]
+        return self._meta.output_links
     
     def sqls(self, **kwargs):
         return self._meta.link_grouping_sqls

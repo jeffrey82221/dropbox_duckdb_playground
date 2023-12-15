@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 
 class SqlBuilder:
@@ -73,10 +73,12 @@ class GroupingMeta:
             node_grouping: Dict[str, List[str]], 
             link_grouping: Dict[str, List[str]], 
             node_grouping_sqls: Dict[str, str]=dict(), 
-            link_grouping_sqls: Dict[str, str]=dict()
+            link_grouping_sqls: Dict[str, str]=dict(),
+            triplets: Dict[str, Tuple[str, str]]=dict(),
         ):
             self.node_grouping = node_grouping
             self.link_grouping = link_grouping
+            self.triplets = triplets
             self.__node_grouping_sqls = node_grouping_sqls
             self.__link_grouping_sqls = link_grouping_sqls
     
@@ -116,21 +118,21 @@ class GroupingMeta:
     
     @property
     def output_nodes(self) -> List[str]:
-        return [f'{n}_final' for n in self.node_grouping]
+        return [f'node_{n}_final' for n in self.node_grouping]
     
     @property
     def output_links(self) -> List[str]:
-        return [f'{n}_final' for n in self.link_grouping]
+        return [f'link_{n}_final' for n in self.link_grouping]
     
     @property
     def node_grouping_sqls(self) -> Dict[str, str]:
         result = dict()
         for key in self.node_grouping:
             if key in self.__node_grouping_sqls:
-                result[f'{key}_final'] = SqlBuilder.build_node_join_sql(self.__node_grouping_sqls[key], self.node_grouping[key])
+                result[f'node_{key}_final'] = SqlBuilder.build_node_join_sql(self.__node_grouping_sqls[key], self.node_grouping[key])
             else:
                 assert len(self.node_grouping[key]) == 1, 'default node grouping should be 1-1 mapping'
-                result[f'{key}_final'] = f"SELECT * FROM {self.node_grouping[key][0]}"
+                result[f'node_{key}_final'] = f"SELECT * FROM {self.node_grouping[key][0]}"
         return result
     
     @property
@@ -138,8 +140,8 @@ class GroupingMeta:
         result = dict()
         for key in self.link_grouping:
             if key in self.__link_grouping_sqls:
-                result[f'{key}_final'] = SqlBuilder.build_link_join_sql(self.__link_grouping_sqls[key], self.link_grouping[key])
+                result[f'link_{key}_final'] = SqlBuilder.build_link_join_sql(self.__link_grouping_sqls[key], self.link_grouping[key])
             else:
                 assert len(self.link_grouping[key]) == 1, 'default link grouping should be 1-1 mapping'
-                result[f'{key}_final'] = f"SELECT * FROM {self.link_grouping[key][0]}"
+                result[f'link_{key}_final'] = f"SELECT * FROM {self.link_grouping[key][0]}"
         return result

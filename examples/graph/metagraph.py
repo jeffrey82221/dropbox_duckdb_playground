@@ -116,7 +116,8 @@ class MetaGraph:
             self.node_grouping,
             self.link_grouping,
             self.__node_grouping_sqls,
-            self.__link_grouping_sqls
+            self.__link_grouping_sqls,
+            triplets=self.triplets
         )
     
     @property
