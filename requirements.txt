@@ -7,3 +7,4 @@ paradag
 dedupe
 icecream
 dill
+redisgraph-bulk-loader

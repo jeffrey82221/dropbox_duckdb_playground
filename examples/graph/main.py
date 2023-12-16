@@ -21,6 +21,7 @@ class GraphDataPlatform(ETLGroup):
     def __init__(self, metagraph: MetaGraph, 
                  canon_fs: FileSystem, subgraph_fs: FileSystem, 
                  output_fs: FileSystem,
+                 redisgraph_fs: FileSystem,
                  er_meta_list: List[ERMeta]=[],
                  mapping_fs: Optional[FileSystem]=None, 
                  model_fs: Optional[FileSystem]=None, 
@@ -52,15 +53,16 @@ class GraphDataPlatform(ETLGroup):
             )
             args.append(mapping)
         # 2. Group Subgraphs into Final Graph
-        grouper = GraphGrouper(
+        self._grouper = GraphGrouper(
             meta=grouping_meta,
             rdb=rdb,
             input_fs=subgraph_fs,
-            output_fs=output_fs
+            output_fs=output_fs,
+            redisgraph_fs=redisgraph_fs
         )
-        args.append(grouper)
+        args.append(self._grouper)
         self._input_ids = subgraph_extractor.input_ids
-        self._output_ids = grouper.output_ids
+        self._output_ids = self._grouper.output_ids
         super().__init__(*args)
 
     @property

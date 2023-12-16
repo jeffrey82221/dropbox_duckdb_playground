@@ -6,9 +6,10 @@ from batch_framework.rdb import RDB
 from .groupers import NodeGrouper, LinkGrouper
 from .meta import GroupingMeta
 from .validate import Validator
+from .redisgraph import FormatNode, FormatLink
 
 class GraphGrouper(ETLGroup):
-    def __init__(self, meta: GroupingMeta, rdb: RDB, input_fs: FileSystem, output_fs: FileSystem):
+    def __init__(self, meta: GroupingMeta, rdb: RDB, input_fs: FileSystem, output_fs: FileSystem, redisgraph_fs: FileSystem):
         node_grouper = NodeGrouper(
             meta=meta,
             rdb=rdb,
@@ -25,8 +26,16 @@ class GraphGrouper(ETLGroup):
         self._inputs = node_grouper.input_ids + link_grouper.input_ids
         self._outputs = node_grouper.output_ids + link_grouper.output_ids
         validator = Validator(self._meta, PandasStorage(output_fs))
-        super().__init__(node_grouper, link_grouper, validator)
+        args = [node_grouper, link_grouper, validator]
+        for node in meta.node_grouping.keys():
+            args.append(FormatNode(node, PandasStorage(output_fs), redisgraph_fs))
+        for link, (from_node, to_node) in meta.triplets.items():
+            args.append(FormatLink(link, from_node, to_node, PandasStorage(output_fs), redisgraph_fs))
+        super().__init__(*args)
 
+    @property
+    def external_input_ids(self) -> List[str]:
+        return self.input_ids
     
     @property
     def input_ids(self):

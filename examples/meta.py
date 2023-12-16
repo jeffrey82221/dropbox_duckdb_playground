@@ -19,6 +19,7 @@ metagraph = MetaGraph(
     },
     node_grouping_sqls={
         'package': """
+            DISTINCT ON (t0.node_id)
             t0.node_id,
             COALESCE(t1.name, t2.name) AS name,
             t1.requires_python,
@@ -27,6 +28,7 @@ metagraph = MetaGraph(
             t1.num_releases
         """,
         'person': """
+            DISTINCT ON (t0.node_id)
             t0.node_id,
             COALESCE(t1.name, t2.name) AS name,
             COALESCE(t1.email, t2.email) AS email
