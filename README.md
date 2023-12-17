@@ -3,22 +3,25 @@ Experiment with new ETL architecture: using Dropbox as storage, Duckdb + Python 
 
 # Steps:
 
-1. Setup connection to Dropbox
-2. Build `ETL` object and `Storage` objects
+1. [ ] Setup connection to Dropbox
+2. [X] Build `ETL` object and `Storage` objects
     - `ETL` for defining etl logic. 
         - execute method: run etl
         - input_ids / output_ids: a list of object ids to be recognized by `Storage`
     - `Storage` for upload and download python object from remote storage. 
-3. Build `ETLGroup` class takes etl as input and connect etl instance, input_ids, output_ids with `paradag`.
-4. Build `SchedulerAdaptor` class to generate YAML for Github Action
+3. [X] Build `ETLGroup` class takes etl as input and connect etl instance, input_ids, output_ids with `paradag`.
+4. [ ] Speed up Mapping Method
+5. Build `SchedulerAdaptor` class to generate YAML for Github Action
 and Airflow dag-factory (can build dag from yaml)
     - ref: https://github.com/ajbosco/dag-factory
+    
 # Future Plan: 
 
-1) Extend to various web sources
-2) Build layered ETL pipeline
-3) Build Graph from PyPi
-
+1) [X] Build layered ETL pipeline
+2) [X] Build Graph from PyPi
+3) [ ] Replace batch_framework.filesystem by ffspec package (It is a filesystem interface used by many framework. e.g., pandas, torch, xarray, dask). 
+4) [ ] Study of dropboxdrivefs as filesystem. 
+3) Extend to various web sources
 # Related Fields:
 
 ## Ref:

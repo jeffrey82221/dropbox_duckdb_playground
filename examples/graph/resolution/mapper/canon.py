@@ -1,7 +1,16 @@
 """
 TODO:
-    - [ ] Understand and Tune n_matches in gazeteer.search
-    - [ ] Allow Map Reduce to reduce memory usage.
+    - [X] Understand and Tune n_matches in gazeteer.search
+    - [ ] Reduce Daily Operation
+        - [ ] Seperate Operation into
+            - [ ] 1. Seperate Input:
+                - [ ] (1) OldMessy + NewCanon
+                - [ ] (2) OldCanon + NewMessy
+                - [ ] (3) NewCanon + OldCanon
+            - [ ] 2. Run CanonMatcher on (1-3) 
+            - [ ] 3. Append result of (1-3) and distinct on (messy_id) select one with largest similarity 
+            - [ ] 4. Feedback the final table
+    
 """
 from typing import List
 import pandas as pd
