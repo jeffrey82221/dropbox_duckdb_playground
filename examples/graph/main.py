@@ -25,8 +25,7 @@ class GraphDataPlatform(ETLGroup):
                  er_meta_list: List[ERMeta]=[],
                  mapping_fs: Optional[FileSystem]=None, 
                  model_fs: Optional[FileSystem]=None, 
-                 rdb: RDB=DuckDBBackend(), 
-                 messy_pairing_worker_cnt: int=10
+                 rdb: RDB=DuckDBBackend()
                 ):
         # Connecting MetaGraph with Entity Resolution Meta
         grouping_meta = metagraph.grouping_meta
@@ -48,8 +47,7 @@ class GraphDataPlatform(ETLGroup):
                 subgraph_fs=subgraph_fs,
                 mapping_fs=mapping_fs,
                 model_fs=model_fs,
-                rdb=rdb,
-                messy_pairing_worker_cnt=messy_pairing_worker_cnt
+                rdb=rdb
             )
             args.append(mapping)
         # 2. Group Subgraphs into Final Graph

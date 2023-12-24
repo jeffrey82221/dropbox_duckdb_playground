@@ -6,25 +6,23 @@ import io
 import csv
 import itertools
 import igraph as ig
-from batch_framework.filesystem import FileSystem, LocalBackend
+from pathos.multiprocessing import Pool
+from batch_framework.filesystem import FileSystem
 from batch_framework.storage import PandasStorage
 from batch_framework.etl import SQLExecutor, ETLGroup
 from batch_framework.rdb import RDB
-from batch_framework.parallize import MapReduce
 from .base import MatcherBase
 from ..base import MessyOnly
 from ..meta import ERMeta
-
 
 class MessyMatcher(ETLGroup):
     """
     Input Messy Node Table 
     Output a Messy->Cluster Mapping Table
     """
-    def __init__(self, meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB, pairing_worker_count: int = 10, threshold=0.5, take_filtered=True):
+    def __init__(self, meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB, threshold=0.5, take_filtered=True):
         self._mapping_fs = mapping_fs
         self._take_filtered = take_filtered
-        self._partition_fs = LocalBackend(f'{self._mapping_fs._directory}partition/')
         messy_feature_engineer = MessyFeatureEngineer(
             meta,
             PandasStorage(subgraph_fs), 
@@ -43,14 +41,12 @@ class MessyMatcher(ETLGroup):
             rdb,
             mapping_fs
         )
-        messy_pair_selector = MapReduce(MessyPairSelector(
+        messy_pair_selector = MessyPairSelector(
             meta,
             PandasStorage(mapping_fs), 
             PandasStorage(mapping_fs),
             model_fs=model_fs,
             threshold=threshold
-        ), pairing_worker_count, 
-            tmp_fs = self._partition_fs
         )
         messy_cluster = MessyClusterer(
             meta,
@@ -82,11 +78,6 @@ class MessyMatcher(ETLGroup):
     @property
     def label(self):
         return self._meta.messy_node
-
-    def start(self, **kwargs):
-        from pathlib import Path
-        path = Path(self._partition_fs._directory).mkdir(parents=True, exist_ok=True)
-        print(path, 'created')
         
     def end(self, **kwargs):
         self.drop_internal_objs()
@@ -161,6 +152,9 @@ class MessyBlocker(MessyOnly, MatcherBase):
         self._deduper = dedupe.StaticDedupe(buff)
         print('Finish Creating dedupe.StaticDedupe of MessyMatcher')
 
+    def end(self):
+        self._deduper.fingerprinter.reset_indices()
+
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
         table = inputs[0]
         print('input size of messy blocker:', len(table))
@@ -197,6 +191,7 @@ class MessyBlocker(MessyOnly, MatcherBase):
     @property
     def output_ids(self):
         return [f'{self.label}_block']
+    
     
 class MessyEntityPairer(SQLExecutor, MessyOnly):
     """Generate Entity Map from Block Table
@@ -275,32 +270,118 @@ class MessyPairSelector(MessyOnly, MatcherBase):
         print('Start Loading Model to MessyMatcher')
         buff = self._model_fs.download_core(self.model_file_name)
         buff.seek(0)
-        self._deduper = dedupe.StaticDedupe(buff, num_cores=0, in_memory=True)
+        self._deduper = dedupe.StaticDedupe(buff, num_cores=4, in_memory=True)
         print('Finish Creating dedupe.StaticDedupe of MessyMatcher')
     
     def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
+        """
+        TODO:
+            - [X] Convert table.to_dict() to batch by batch output 
+            - [X] Do self.organize_pairs, score, filter, map batch by batch
+            - [X] Collect Result Batch by Batch
+            - [X] Add Cache of Input
+            - [X] Add Cache of Output
+            - [X] Do Data Split by Input Cache
+                - [X] FIXME:
+                    - [X] Old Pairing Is Defined by Prvious a_node_id, b_node_id combination
+                    - [X] New Pairing Are Those not in Old Pairing
+            - [X] Do Multiple Stage of Pairing
+            - [X] Combine Pairing Result with Output Cache
+        """
         table = inputs[0]
         print('[MessyPairSelector] table size:', len(table))
-        scores = list(map(
-            lambda x: [x[0][0], x[0][1], x[1]], 
-            filter(
-                lambda x: x[1] > self._threshold, 
-                    tqdm.tqdm(
-                        self._deduper.score(
-                            self.organize_pairs(
-                                table.to_dict('records')
-                            )
-                        ),
-                        total=len(table), 
-                        desc='scoring'
-                    )
-                )
-            )
-        )
-        print('Finish Score Calculation of Size:', len(scores))
-        result = pd.DataFrame(scores, columns=['from', 'to', 'score'])
+        if self.exists_cache:
+            feedback_input = self.load_cache(self.input_ids[0])
+            feedback_input['id_pairs'] = feedback_input.a_node_id.map(str) + feedback_input.b_node_id.map(str)
+            table['id_pairs'] = table.a_node_id.map(str) + table.b_node_id.map(str)
+            old_id_pairs = set(feedback_input['id_pairs'].tolist())
+            print('# old_id_pairs:', len(old_id_pairs))
+            old_condi = table['id_pairs'].map(lambda x: x in old_id_pairs)
+            new_table = table[~old_condi]
+            print('# new_table:', len(new_table))
+            del new_table['id_pairs']
+            if len(new_table) > 0:
+                new_result = self.do_pairing(new_table)
+                feedback_result = self.load_cache(self.output_ids[0])
+                print('# feedback_result:', len(feedback_result))
+                print('# new_result:', len(new_result))
+                result = pd.concat([feedback_result, new_result])
+                print('Done Append New Pairs')
+            else:
+                result = self.load_cache(self.output_ids[0])
+                print('Done Loading New Pairs')
+        else:
+            result = self.do_pairing(table)
+            print('Done Creating Pairs')
+        result.sort_values('score', ascending=False, inplace=True)
+        result.drop_duplicates(subset=['from', 'to'], inplace=True)
+        print('# Final Result:', len(result))
         return [result]
     
+    def do_pairing(self, table: pd.DataFrame) -> pd.DataFrame:
+        pairs_with_score = self.calculate_scores(table, batch_size=100, worker_cnt=8)
+        pairs = list(filter(lambda x: x[-1] > self._threshold, pairs_with_score))
+        print('Finish Pairs:', len(pairs))
+        result = pd.DataFrame(pairs, columns=['from', 'to', 'score'])
+        return result
+
+    def save_cache(self):
+        for input_id in self.input_ids:
+            self._input_storage.upload(self._input_storage.download(input_id), input_id + '_cache')
+            print(input_id + '_cache', 'saved')
+        for output_id in self.output_ids:
+            self._output_storage.upload(self._output_storage.download(output_id), output_id + '_cache')
+            print(output_id + '_cache', 'saved')
+    
+    def load_cache(self, id: str) -> pd.DataFrame:
+        if id in self.input_ids:
+            return self._input_storage.download(id + '_cache')
+        elif id in self.output_ids:
+            return self._output_storage.download(id + '_cache')
+        else:
+            raise ValueError('id to be loaded in load_cache should be in self.input_ids or self.output_ids')
+
+    @property
+    def exists_cache(self) -> bool:
+        for id in self.input_ids:
+            if not self._input_storage.check_exists(id + '_cache'):
+                return False
+        for id in self.output_ids:
+            if not self._output_storage.check_exists(id + '_cache'):
+                return False
+        return True
+    
+    def end(self):
+        self.save_cache()
+        
+                
+    def calculate_scores(self, table: pd.DataFrame, batch_size: int, worker_cnt: int) -> Iterator[Tuple[str, str, float]]:
+        total = len(table)
+        batch_generator = MessyPairSelector.batch(table.to_dict('records'), n=batch_size)
+        batch_pipe = tqdm.tqdm(batch_generator, desc='calculate scores between messy items', total=total // batch_size)
+        with Pool(worker_cnt) as pool:
+            batch_pipe = pool.imap(self.process_batchwise, batch_pipe)
+            for batch in batch_pipe:
+                for item in batch:
+                    yield item
+            pool.close()
+            pool.join()
+
+    def process_batchwise(self, batch: List) -> List:
+        record_pairs = self.organize_pairs(batch)
+        record_ids, records = zip(*(zip(*record_pair) for record_pair in record_pairs))
+        featurizer = self._deduper.data_model.distances
+        classifier = self._deduper.classifier
+        features = featurizer(records)
+        scores = classifier.predict_proba(features)[:, -1]
+        output = [(ids[0], ids[1], score) for ids, score in zip(record_ids, scores)]
+        return output
+
+    @staticmethod
+    def batch(iterable: Iterator, n=1):
+        l = len(iterable)
+        for ndx in range(0, l, n):
+            yield iterable[ndx:min(ndx + n, l)]
         
     def organize_pairs(self, records: Iterator[Dict]) -> Iterator[Tuple[Dict, Dict]]:
         _a_fields = self.a_fields

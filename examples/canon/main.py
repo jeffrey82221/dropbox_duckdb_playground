@@ -16,7 +16,7 @@ from .crawl import (
     LatestUpdatorInputReduce,
     LatestUpdator,
     Combine,
-    Pass
+    Append
 )
 from .tabularize import LatestTabularize
 
@@ -52,7 +52,7 @@ class SimplePyPiCanonicalize(ETLGroup):
             ])
         else:
             units.append(
-                Pass(input_storage=VaexStorage(tmp_fs), output_storage=VaexStorage(raw_df))
+                Append(input_storage=PandasStorage(tmp_fs), output_storage=PandasStorage(raw_df))
             )
         units.append(
             LatestTabularize(

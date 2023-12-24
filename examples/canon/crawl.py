@@ -22,9 +22,12 @@ import requests
 import pandas as pd
 import vaex as vx
 import tqdm
+import time
 import json
 from batch_framework.etl import ObjProcessor
 from batch_framework.storage import PandasStorage
+
+RETRIES_COUNT = 3
 
 class LatestFeedback(ObjProcessor):
     @property
@@ -117,7 +120,7 @@ class LatestDownloader(ObjProcessor, LatestProcessor):
         results = []
         for i, name in enumerate(tqdm.tqdm(names, desc='get_new_package_records')):
             url = f"https://pypi.org/pypi/{name}/json"
-            res = requests.get(url)
+            res = self.call_api(url)
             if res.status_code == 404:
                 continue
             assert res.status_code == 200, f'response status code is {res.status_code}'
@@ -127,6 +130,14 @@ class LatestDownloader(ObjProcessor, LatestProcessor):
             results.append((name, latest, etag))
         return pd.DataFrame.from_records(results, columns=['name', 'latest', 'etag'])
 
+    def call_api(self, url):
+        for i in range(RETRIES_COUNT):
+            try:
+                res = requests.get(url)
+                return res
+            except requests.exceptions.ConnectionError:
+                print(f'ConnectionError happend on {i}th package download')
+                time.sleep(5)
 class LatestUpdatorInputReduce(ObjProcessor):
     @property
     def input_ids(self):
@@ -201,7 +212,13 @@ class LatestUpdator(ObjProcessor, LatestProcessor):
                 (Not None if there is data difference)
         """
         url = f"https://pypi.org/pypi/{name}/json"
-        res = requests.get(url, headers={"If-None-Match": etag})
+        for i in range(RETRIES_COUNT):
+            try:
+                res = requests.get(url, headers={"If-None-Match": etag})
+                break
+            except requests.exceptions.ConnectionError:
+                time.sleep(5)
+                print(f'ConnectionError Happened, {i}th reties')
         if res.status_code == 404:
             return '404'
         assert res.status_code in [200, 304], f'response status code is {res.status_code}'
@@ -228,14 +245,17 @@ class Combine(ObjProcessor):
         print(f'Combined Size: {len(result_df)}')
         return [result_df]
     
-class Pass(ObjProcessor):
+class Append(ObjProcessor):
     @property
     def input_ids(self):
-        return ['latest_new']
+        return ['latest_new', 'latest_feedback']
     
     @property
     def output_ids(self):
         return ['latest']
     
-    def transform(self, inputs: List[vx.DataFrame], **kwargs) -> List[vx.DataFrame]:
-        return inputs
+    def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
+        print(f'Combine latest_new: {len(inputs[0])}, latest_feedback: {len(inputs[1])}')
+        result_df = pd.concat(inputs, ignore_index=True)
+        print(f'Combined Size: {len(result_df)}')
+        return [result_df]

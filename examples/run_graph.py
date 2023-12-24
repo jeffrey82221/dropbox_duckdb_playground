@@ -41,11 +41,11 @@ gdp = GraphDataPlatform(
     er_meta_list=[er_meta_license, er_meta_requirement],
     mapping_fs = LocalBackend('./data/mapping/'),
     model_fs = LocalBackend('./data/model/'),
-    rdb=DuckDBBackend(),
-    messy_pairing_worker_cnt=10
+    rdb=DuckDBBackend()
 )
 
     
 if __name__ == '__main__':
-    gdp._grouper.execute(max_active_run=1)
+    # gdp._grouper.execute(max_active_run=1)
+    gdp.execute(max_active_run=8)
     

@@ -10,4 +10,4 @@ pypi_table_loader = SimplePyPiCanonicalize(
     do_update=True
 )
 if __name__ == '__main__':
-    pypi_table_loader.execute(max_active_run=5)
+    pypi_table_loader.execute(max_active_run=40)

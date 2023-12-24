@@ -20,8 +20,11 @@ and Airflow dag-factory (can build dag from yaml)
 1) [X] Build layered ETL pipeline
 2) [X] Build Graph from PyPi
 3) [ ] Replace batch_framework.filesystem by ffspec package (It is a filesystem interface used by many framework. e.g., pandas, torch, xarray, dask). 
-4) [ ] Study of dropboxdrivefs as filesystem. 
-3) Extend to various web sources
+4) [ ] Enable Cache Mechanism (using copy in filesystem) to store inputs and outputs of previous run for later use. (turn on only if set)
+5) [ ] Enable Automatic Temporary Data Cleaning 
+6) [ ] Change current feedback mechanism to common cache mechaism (check examples)
+7) [ ] Study of dropboxdrivefs as filesystem. 
+8) Extend to various web sources
 # Related Fields:
 
 ## Ref:

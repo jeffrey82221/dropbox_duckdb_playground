@@ -2,7 +2,7 @@
 TODO:
 - [X] Add ID convertor / Links to Mapping Generator
     -> Build Entity Resolution Class
-- [ ] Enable no-canon workflow in mapping generator
+- [X] Enable no-canon workflow in mapping generator
 """
 from batch_framework.storage import PandasStorage
 from batch_framework.filesystem import FileSystem
@@ -14,7 +14,7 @@ from .mapper import MessyMatcher
 from .convertor import IDConvertor
 
 class MappingGenerator(ETLGroup):
-    def __init__(self, meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB, messy_pairing_worker_cnt: int = 10):
+    def __init__(self, meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB):
         self._mapping_fs = mapping_fs
         etl_layers = []
         if meta.has_canon:
@@ -39,7 +39,6 @@ class MappingGenerator(ETLGroup):
                     mapping_fs,
                     model_fs,
                     rdb,
-                    pairing_worker_count=messy_pairing_worker_cnt,
                     threshold=0.5,
                     take_filtered=True
                 )
@@ -59,7 +58,6 @@ class MappingGenerator(ETLGroup):
                     mapping_fs,
                     model_fs,
                     rdb,
-                    pairing_worker_count=messy_pairing_worker_cnt,
                     threshold=0.5,
                     take_filtered=False
                 )
@@ -97,6 +95,8 @@ class MappingGenerator(ETLGroup):
 
     def end(self, **kwargs):
         self.drop_internal_objs()
+
+
 
 class MessyInput(SQLExecutor):
     """
