@@ -97,7 +97,6 @@ class MappingGenerator(ETLGroup):
         self.drop_internal_objs()
 
 
-
 class MessyInput(SQLExecutor):
     """
     Passing messy input to mapping_fs

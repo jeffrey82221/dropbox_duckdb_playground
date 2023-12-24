@@ -32,10 +32,6 @@ class GraphGrouper(ETLGroup):
         for link, (from_node, to_node) in meta.triplets.items():
             args.append(FormatLink(link, from_node, to_node, PandasStorage(output_fs), redisgraph_fs))
         super().__init__(*args)
-
-    @property
-    def external_input_ids(self) -> List[str]:
-        return self.input_ids
     
     @property
     def input_ids(self):

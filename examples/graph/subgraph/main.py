@@ -28,3 +28,5 @@ class SubgraphExtractor(ETLGroup):
     def output_ids(self) -> List[str]:
         return self._metagraph.nodes + self._metagraph.links
     
+    def end(self, **kwargs):
+        self.drop_internal_objs()
