@@ -24,11 +24,11 @@ class Storage:
             to be use for the python object storage.
         """
         self._backend = backend
-    
+
     def get_upload_type(self):
         first_input_arg = list(self.upload.__annotations__.keys())[0]
         return self.upload.__annotations__[first_input_arg]
-    
+
     def get_download_type(self):
         return self.download.__annotations__['return']
 
@@ -51,14 +51,14 @@ class Storage:
             object: The downloaded file.
         """
         raise NotImplementedError
-    
+
     @abc.abstractmethod
     def check_exists(self, obj_id: str) -> bool:
         """
         Check whether an object exists
         """
         raise NotImplementedError
-    
+
     @abc.abstractmethod
     def drop(self, obj_id: str):
         """
@@ -66,12 +66,15 @@ class Storage:
         """
         raise NotImplementedError
 
+
 class JsonStorage(Storage):
     """
-    Storage of JSON Python Diction 
+    Storage of JSON Python Diction
     """
+
     def __init__(self, filesystem: FileSystem):
-        assert isinstance(filesystem, FileSystem), 'Json Storage should have FileSystem backend'
+        assert isinstance(
+            filesystem, FileSystem), 'Json Storage should have FileSystem backend'
         super().__init__(backend=filesystem)
 
     def upload(self, json_obj: Union[Dict, List], obj_id: str):
@@ -83,7 +86,7 @@ class JsonStorage(Storage):
         """
         buff = io.BytesIO(json.dumps(json_obj).encode())
         self._backend.upload_core(buff, obj_id + '.json')
-    
+
     def download(self, obj_id: str) -> Union[Dict, List]:
         buff = self._backend.download_core(obj_id + '.json')
         buff.seek(0)
@@ -94,32 +97,38 @@ class JsonStorage(Storage):
 
     def drop(self, obj_id: str):
         return self._backend.drop_file(obj_id + '.json')
-    
+
+
 class DataFrameStorage(Storage):
     """
     Storage of DataFrame
     """
+
     def __init__(self, backend: Backend):
         super().__init__(backend=backend)
 
     @abc.abstractmethod
-    def upload(self, dataframe: Union[pd.DataFrame, vx.DataFrame, pa.Table], obj_id: str):
+    def upload(self, dataframe: Union[pd.DataFrame,
+               vx.DataFrame, pa.Table], obj_id: str):
         raise NotImplementedError
-    
+
     @abc.abstractmethod
-    def download(self, obj_id: str) -> Union[pd.DataFrame, vx.DataFrame, pa.Table]:
+    def download(
+            self, obj_id: str) -> Union[pd.DataFrame, vx.DataFrame, pa.Table]:
         raise NotImplementedError
-    
+
     def check_exists(self, obj_id: str) -> bool:
         return self._backend.check_exists(obj_id + '.parquet')
-    
+
     def drop(self, obj_id: str):
         return self._backend.drop_file(obj_id + '.parquet')
+
 
 class PandasStorage(DataFrameStorage):
     """
     Storage of Pandas DataFrame
     """
+
     def upload(self, dataframe: pd.DataFrame, obj_id: str):
         if isinstance(self._backend, FileSystem):
             buff = io.BytesIO()
@@ -132,7 +141,8 @@ class PandasStorage(DataFrameStorage):
             finally:
                 cursor.close()
         else:
-            raise TypeError(f'backend should be FileSystem/RDB, but it is {self._backend}')
+            raise TypeError(
+                f'backend should be FileSystem/RDB, but it is {self._backend}')
 
     def download(self, obj_id: str) -> pd.DataFrame:
         if isinstance(self._backend, FileSystem):
@@ -146,11 +156,14 @@ class PandasStorage(DataFrameStorage):
             finally:
                 cursor.close()
         else:
-            raise TypeError(f'backend should be FileSystem, but it is {self._backend}')
+            raise TypeError(
+                f'backend should be FileSystem, but it is {self._backend}')
+
 
 class PyArrowStorage(DataFrameStorage):
     """Storage of pyarrow Table
     """
+
     def upload(self, dataframe: pa.Table, obj_id: str):
         if isinstance(self._backend, LocalBackend):
             buff = io.BytesIO()
@@ -163,7 +176,8 @@ class PyArrowStorage(DataFrameStorage):
             finally:
                 cursor.close()
         else:
-            raise TypeError(f'backend should be FileSystem, but it is {self._backend}')
+            raise TypeError(
+                f'backend should be FileSystem, but it is {self._backend}')
 
     def download(self, obj_id: str) -> pa.Table:
         if isinstance(self._backend, FileSystem):
@@ -176,14 +190,17 @@ class PyArrowStorage(DataFrameStorage):
             finally:
                 cursor.close()
         else:
-            raise TypeError(f'backend should be FileSystem, but it is {self._backend}')
+            raise TypeError(
+                f'backend should be FileSystem, but it is {self._backend}')
+
 
 class VaexStorage(DataFrameStorage):
     """Storage of Vaex DataFrame
     """
+
     def upload(self, dataframe: vx.DataFrame, obj_id: str):
         if isinstance(self._backend, LocalBackend):
-            # Try using multithread + io.pipe to stream vaex 
+            # Try using multithread + io.pipe to stream vaex
             # to target directory
             buff = io.BytesIO()
             dataframe.export_parquet(buff)
@@ -193,7 +210,9 @@ class VaexStorage(DataFrameStorage):
 
     def download(self, obj_id: str) -> vx.DataFrame:
         if isinstance(self._backend, LocalBackend):
-            result = vx.open(f'{self._backend._directory}{obj_id}' + '.parquet')
+            result = vx.open(
+                f'{self._backend._directory}{obj_id}' +
+                '.parquet')
             return result
         else:
             raise TypeError('backend should be LocalBackend')

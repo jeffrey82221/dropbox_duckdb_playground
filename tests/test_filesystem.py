@@ -4,6 +4,7 @@ import io
 from batch_framework.filesystem import DropboxBackend, LocalBackend
 from dropbox.exceptions import ApiError
 
+
 @pytest.fixture
 def dropbox():
     return DropboxBackend()
@@ -23,6 +24,7 @@ def test_upload_download_core(dropbox, local):
         download = backend.download_core('my-file.parquet')
         out_table = pd.read_parquet(download, engine='pyarrow')
         pd.testing.assert_frame_equal(in_table, out_table)
+
 
 def test_dropbox_file_not_exists(dropbox):
     with pytest.raises(ApiError):

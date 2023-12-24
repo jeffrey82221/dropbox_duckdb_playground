@@ -7,11 +7,11 @@ We will use one of the sample files from the RecordLink example as the
 canonical set.
 
 TODO:
-- [ ] Seperate training and inference flow 
+- [ ] Seperate training and inference flow
     - [ ] training
         - inputs: messy data, canonical data, training_data, console input
-        - outputs: training_data, model_setting 
-    - [ ] inference 
+        - outputs: training_data, model_setting
+    - [ ] inference
         - inputs: model_setting
         - outputs: id mapping (messy data -> canonical data)
 """

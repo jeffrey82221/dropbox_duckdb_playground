@@ -55,7 +55,7 @@ class FileSystem(Backend):
             bool: exists or not
         """
         raise NotImplementedError
-    
+
     @abc.abstractmethod
     def drop_file(self, remote_path: str):
         """
@@ -73,9 +73,9 @@ class DropboxBackend(FileSystem):
 
     def __init__(self, directory='/'):
         self._dbx = dropbox.Dropbox(
-            app_key = os.getenv('DROPBOX_APP_KEY'),
-            app_secret = os.getenv('DROPBOX_APP_SECRET'),
-            oauth2_refresh_token = os.getenv('DROPBOX_TOKEN'))
+            app_key=os.getenv('DROPBOX_APP_KEY'),
+            app_secret=os.getenv('DROPBOX_APP_SECRET'),
+            oauth2_refresh_token=os.getenv('DROPBOX_TOKEN'))
         super().__init__(directory)
 
     def upload_core(self, file_obj: io.BytesIO, remote_path: str):
@@ -99,7 +99,7 @@ class DropboxBackend(FileSystem):
                 sys.exit()
         except AuthError as err:
             raise err
-        
+
     def download_core(self, remote_path: str) -> io.BytesIO:
         try:
             buff = io.BytesIO(self._dbx.files_download(
@@ -124,10 +124,13 @@ class DropboxBackend(FileSystem):
             return True
         except ApiError:
             return False
+
+
 class LocalBackend(FileSystem):
     def __init__(self, directory='./'):
         self._directory = directory
-        assert self._directory.endswith('/'), 'Please make sure directory endswith /'
+        assert self._directory.endswith(
+            '/'), 'Please make sure directory endswith /'
 
     def upload_core(self, file_obj: io.BytesIO, remote_path: str):
         """Upload file object to local storage
@@ -155,6 +158,6 @@ class LocalBackend(FileSystem):
 
     def check_exists(self, remote_path: str) -> bool:
         return os.path.exists(self._directory + remote_path)
-    
+
     def drop_file(self, remote_path: str):
         return os.remove(self._directory + remote_path)

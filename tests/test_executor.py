@@ -45,6 +45,7 @@ def op():
     )
     return op
 
+
 @pytest.fixture
 def op_with_fs_input():
     db = DuckDBBackend()
@@ -59,6 +60,7 @@ def op_with_fs_input():
         input_fs=input_fs
     )
     return op
+
 
 @pytest.fixture
 def op_with_fs_output():
@@ -75,6 +77,7 @@ def op_with_fs_output():
     )
     return op
 
+
 def test_execute(op, op_with_fs_input, op_with_fs_output):
     for operator in [op, op_with_fs_input, op_with_fs_output]:
         in_table = pd.DataFrame(
@@ -88,5 +91,3 @@ def test_execute(op, op_with_fs_input, op_with_fs_output):
             result = operator._output_storage.download('output3').to_pandas()
             pd.testing.assert_frame_equal(result, in_table)
             os.remove('./data/output3')
-
-

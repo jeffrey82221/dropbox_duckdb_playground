@@ -14,7 +14,7 @@ from batch_framework.filesystem import LocalBackend
 from batch_framework.storage import PandasStorage, VaexStorage
 
 
-class PDOperator(ObjProcessor):        
+class PDOperator(ObjProcessor):
     @property
     def input_ids(self):
         return [
@@ -28,7 +28,8 @@ class PDOperator(ObjProcessor):
             'output1'
         ]
 
-    def transform(self, inputs: List[pd.DataFrame], **kwargs) -> List[pd.DataFrame]:
+    def transform(self, inputs: List[pd.DataFrame],
+                  **kwargs) -> List[pd.DataFrame]:
         return [inputs[0] + inputs[1]]
 
 
@@ -46,7 +47,8 @@ class VXOperator(ObjProcessor):
             'output2'
         ]
 
-    def transform(self, inputs: List[vx.DataFrame], **kwargs) -> List[vx.DataFrame]:
+    def transform(self, inputs: List[vx.DataFrame],
+                  **kwargs) -> List[vx.DataFrame]:
         return [vx.concat([inputs[0], inputs[1]])]
 
 

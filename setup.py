@@ -32,7 +32,7 @@ setuptools.setup(
 
     long_description_content_type="text/markdown",
 
-    packages=find_packages(exclude=('tests','examples')),
+    packages=find_packages(exclude=('tests', 'examples')),
 
     classifiers=[
 

@@ -7,6 +7,7 @@ from batch_framework.rdb import DuckDBBackend
 from batch_framework.storage import PandasStorage, VaexStorage, PyArrowStorage, JsonStorage
 from datetime import datetime
 
+
 @pytest.fixture
 def backends():
     return [DuckDBBackend(), LocalBackend('./data/')]  # , DropboxBackend(),
@@ -36,14 +37,16 @@ def test_upload_download(backends, storages):
             if Storage == PandasStorage:
                 pd.testing.assert_frame_equal(in_table, out_table)
             elif Storage == PyArrowStorage:
-                pd.testing.assert_frame_equal(in_table.to_pandas(), out_table.to_pandas())
+                pd.testing.assert_frame_equal(
+                    in_table.to_pandas(), out_table.to_pandas())
             else:
                 pd.testing.assert_frame_equal(
                     in_table.to_pandas_df(), out_table.to_pandas_df())
 
+
 def test_json_storage():
     js = JsonStorage(LocalBackend('./data/'))
-    data = {'a': [1,2,3]}
+    data = {'a': [1, 2, 3]}
     js.upload(data, 'json_test.json')
     result = js.download('json_test.json')
     assert data == result

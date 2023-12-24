@@ -1,5 +1,5 @@
 """
-RDB classes: 
+RDB classes:
 Can register table, execute sql, and extract table object.
 """
 from typing import Optional
@@ -9,11 +9,12 @@ import os
 from .backend import Backend
 from .filesystem import FileSystem, LocalBackend
 
+
 class RDB(Backend):
     """RDB backend for storing tabular data
     """
 
-    def __init__(self, db_name: str=''):
+    def __init__(self, db_name: str = ''):
         self._db_name = db_name
         self._conn = None
         super().__init__()
@@ -46,8 +47,10 @@ class RDB(Backend):
         """
         raise NotImplementedError
 
+
 class DuckDBBackend(RDB):
-    def __init__(self, persist_fs: Optional[FileSystem]=None, db_name: Optional[str]=None):
+    def __init__(
+            self, persist_fs: Optional[FileSystem] = None, db_name: Optional[str] = None):
         if persist_fs:
             if not isinstance(persist_fs, LocalBackend):
                 if persist_fs.check_exists(db_name):
@@ -55,7 +58,8 @@ class DuckDBBackend(RDB):
                     buff = persist_fs.download_core(db_name)
                     lb = LocalBackend()
                     lb.upload_core(buff, self._db_name)
-                    assert os.path.exists('./' + db_name), f'db_name: {db_name} does not exist'
+                    assert os.path.exists(
+                        './' + db_name), f'db_name: {db_name} does not exist'
         self._persist_fs = persist_fs
         super().__init__(db_name)
 
@@ -68,10 +72,11 @@ class DuckDBBackend(RDB):
             if self._persist_fs is None:
                 conn = duckdb.connect(database=':memory:')
             else:
-                conn = duckdb.connect(database=self._persist_fs._directory + self._db_name)
+                conn = duckdb.connect(
+                    database=self._persist_fs._directory + self._db_name)
             self._conn = conn
         return self._conn
-        
+
     def get_conn(self):
         return self.conn.cursor()
 
@@ -81,7 +86,6 @@ class DuckDBBackend(RDB):
             conn.register(table_name, table)
         except BaseException as e:
             raise ValueError(f'table_name: {table_name}') from e
-        
 
     def execute(self, sql: str) -> object:
         conn = self.conn
@@ -94,8 +98,8 @@ class DuckDBBackend(RDB):
         """
         Upload current status of duckdb to remote file system
         """
-        assert not isinstance(self._persist_fs, LocalBackend), 'No need to commit for local duckdb dump storage.'
+        assert not isinstance(
+            self._persist_fs, LocalBackend), 'No need to commit for local duckdb dump storage.'
         lb = LocalBackend()
         buff = lb.download_core(self._db_name)
         self._persist_fs.upload_core(buff, self._db_name)
-
