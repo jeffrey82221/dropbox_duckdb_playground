@@ -10,33 +10,35 @@ from .resolution import (
 )
 from graph.metagraph import MetaGraph
 
+
 class GraphDataPlatform(ETLGroup):
     """
-    Data Flow: 
-        1. canonicalize data 
+    Data Flow:
+        1. canonicalize data
         2. extract subgraphs
         3. do entity resolution
         4. group subgraph
     """
-    def __init__(self, metagraph: MetaGraph, 
-                 canon_fs: FileSystem, subgraph_fs: FileSystem, 
+
+    def __init__(self, metagraph: MetaGraph,
+                 canon_fs: FileSystem, subgraph_fs: FileSystem,
                  output_fs: FileSystem,
                  redisgraph_fs: FileSystem,
-                 er_meta_list: List[ERMeta]=[],
-                 mapping_fs: Optional[FileSystem]=None, 
-                 model_fs: Optional[FileSystem]=None, 
-                 rdb: RDB=DuckDBBackend()
-                ):
+                 er_meta_list: List[ERMeta] = [],
+                 mapping_fs: Optional[FileSystem] = None,
+                 model_fs: Optional[FileSystem] = None,
+                 rdb: RDB = DuckDBBackend()
+                 ):
         # Connecting MetaGraph with Entity Resolution Meta
         grouping_meta = metagraph.grouping_meta
         for er_meta in er_meta_list:
             er_meta.alter_grouping_way(grouping_meta)
-        # Basic ETL components        
+        # Basic ETL components
         # 1. Extract Subgraphs from Canonicalized Tables
         subgraph_extractor = SubgraphExtractor(
-            metagraph=metagraph, 
+            metagraph=metagraph,
             rdb=rdb,
-            input_fs=canon_fs, 
+            input_fs=canon_fs,
             output_fs=subgraph_fs
         )
         args = [subgraph_extractor]
@@ -66,11 +68,11 @@ class GraphDataPlatform(ETLGroup):
     @property
     def input_ids(self):
         return self._input_ids
-    
+
     @property
     def external_input_ids(self) -> List[str]:
         return self.input_ids
-    
+
     @property
     def output_ids(self):
         return self._output_ids

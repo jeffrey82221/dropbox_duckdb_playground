@@ -8,8 +8,10 @@ from .meta import GroupingMeta
 from .validate import Validator
 from .redisgraph import FormatNode, FormatLink
 
+
 class GraphGrouper(ETLGroup):
-    def __init__(self, meta: GroupingMeta, rdb: RDB, input_fs: FileSystem, output_fs: FileSystem, redisgraph_fs: FileSystem):
+    def __init__(self, meta: GroupingMeta, rdb: RDB, input_fs: FileSystem,
+                 output_fs: FileSystem, redisgraph_fs: FileSystem):
         node_grouper = NodeGrouper(
             meta=meta,
             rdb=rdb,
@@ -28,15 +30,25 @@ class GraphGrouper(ETLGroup):
         validator = Validator(self._meta, PandasStorage(output_fs))
         args = [node_grouper, link_grouper, validator]
         for node in meta.node_grouping.keys():
-            args.append(FormatNode(node, PandasStorage(output_fs), redisgraph_fs))
+            args.append(
+                FormatNode(
+                    node,
+                    PandasStorage(output_fs),
+                    redisgraph_fs))
         for link, (from_node, to_node) in meta.triplets.items():
-            args.append(FormatLink(link, from_node, to_node, PandasStorage(output_fs), redisgraph_fs))
+            args.append(
+                FormatLink(
+                    link,
+                    from_node,
+                    to_node,
+                    PandasStorage(output_fs),
+                    redisgraph_fs))
         super().__init__(*args)
-    
+
     @property
     def input_ids(self):
         return self._inputs
-    
+
     @property
     def output_ids(self):
         return self._outputs

@@ -16,7 +16,7 @@ class SqlBuilder:
         WITH pop AS (
             {pop_sql}
         )
-        SELECT 
+        SELECT
             {column_sql}
         FROM pop AS t0
             {left_join_sql}
@@ -25,7 +25,8 @@ class SqlBuilder:
 
     @staticmethod
     def build_node_pop_sql(node_names: List[str]) -> str:
-        union_table = 'UNION\n'.join([f'SELECT node_id FROM {nm}\n' for nm in node_names])
+        union_table = 'UNION\n'.join(
+            [f'SELECT node_id FROM {nm}\n' for nm in node_names])
         result = f"""
         SELECT DISTINCT ON (node_id)
             node_id
@@ -46,7 +47,7 @@ class SqlBuilder:
         WITH pop AS (
             {pop_sql}
         )
-        SELECT 
+        SELECT
             {column_sql}
         FROM pop AS t0
             {left_join_sql}
@@ -55,7 +56,8 @@ class SqlBuilder:
 
     @staticmethod
     def build_link_pop_sql(link_names: List[str]) -> str:
-        union_table = 'UNION\n'.join([f'SELECT from_id, to_id FROM {nm}\n' for nm in link_names])
+        union_table = 'UNION\n'.join(
+            [f'SELECT from_id, to_id FROM {nm}\n' for nm in link_names])
         result = f"""
         SELECT DISTINCT ON (from_id, to_id)
             from_id, to_id
@@ -64,24 +66,26 @@ class SqlBuilder:
         )
         """
         return result
-    
+
+
 class GroupingMeta:
     """
     Data Class describing how subgraphs are merged
     """
-    def __init__(self, 
-            node_grouping: Dict[str, List[str]], 
-            link_grouping: Dict[str, List[str]], 
-            node_grouping_sqls: Dict[str, str]=dict(), 
-            link_grouping_sqls: Dict[str, str]=dict(),
-            triplets: Dict[str, Tuple[str, str]]=dict(),
-        ):
-            self.node_grouping = node_grouping
-            self.link_grouping = link_grouping
-            self.triplets = triplets
-            self.__node_grouping_sqls = node_grouping_sqls
-            self.__link_grouping_sqls = link_grouping_sqls
-    
+
+    def __init__(self,
+                 node_grouping: Dict[str, List[str]],
+                 link_grouping: Dict[str, List[str]],
+                 node_grouping_sqls: Dict[str, str] = dict(),
+                 link_grouping_sqls: Dict[str, str] = dict(),
+                 triplets: Dict[str, Tuple[str, str]] = dict(),
+                 ):
+        self.node_grouping = node_grouping
+        self.link_grouping = link_grouping
+        self.triplets = triplets
+        self.__node_grouping_sqls = node_grouping_sqls
+        self.__link_grouping_sqls = link_grouping_sqls
+
     def alter_input_node(self, node_name: str, target_name: str):
         for key, nodes in self.node_grouping.items():
             new_nodes = []
@@ -108,40 +112,44 @@ class GroupingMeta:
         for _, nodes in self.node_grouping.items():
             result.extend(nodes)
         return list(set(result))
-    
+
     @property
     def input_links(self) -> List[str]:
         result = []
         for _, links in self.link_grouping.items():
             result.extend(links)
         return list(set(result))
-    
+
     @property
     def output_nodes(self) -> List[str]:
         return [f'node_{n}_final' for n in self.node_grouping]
-    
+
     @property
     def output_links(self) -> List[str]:
         return [f'link_{n}_final' for n in self.link_grouping]
-    
+
     @property
     def node_grouping_sqls(self) -> Dict[str, str]:
         result = dict()
         for key in self.node_grouping:
             if key in self.__node_grouping_sqls:
-                result[f'node_{key}_final'] = SqlBuilder.build_node_join_sql(self.__node_grouping_sqls[key], self.node_grouping[key])
+                result[f'node_{key}_final'] = SqlBuilder.build_node_join_sql(
+                    self.__node_grouping_sqls[key], self.node_grouping[key])
             else:
-                assert len(self.node_grouping[key]) == 1, 'default node grouping should be 1-1 mapping'
+                assert len(
+                    self.node_grouping[key]) == 1, 'default node grouping should be 1-1 mapping'
                 result[f'node_{key}_final'] = f"SELECT DISTINCT ON (node_id) * FROM {self.node_grouping[key][0]}"
         return result
-    
+
     @property
     def link_grouping_sqls(self) -> Dict[str, str]:
         result = dict()
         for key in self.link_grouping:
             if key in self.__link_grouping_sqls:
-                result[f'link_{key}_final'] = SqlBuilder.build_link_join_sql(self.__link_grouping_sqls[key], self.link_grouping[key])
+                result[f'link_{key}_final'] = SqlBuilder.build_link_join_sql(
+                    self.__link_grouping_sqls[key], self.link_grouping[key])
             else:
-                assert len(self.link_grouping[key]) == 1, 'default link grouping should be 1-1 mapping'
+                assert len(
+                    self.link_grouping[key]) == 1, 'default link grouping should be 1-1 mapping'
                 result[f'link_{key}_final'] = f"SELECT DISTINCT ON (from_id, to_id) * FROM {self.link_grouping[key][0]}"
         return result

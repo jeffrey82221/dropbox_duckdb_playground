@@ -7,6 +7,7 @@ import pandas as pd
 import json
 from batch_framework.etl import ObjProcessor
 
+
 class LatestTabularize(ObjProcessor):
     @property
     def input_ids(self):
@@ -15,7 +16,7 @@ class LatestTabularize(ObjProcessor):
     @property
     def output_ids(self):
         return ['latest_package', 'latest_requirement', 'latest_url']
-    
+
     def transform(self, inputs: List[pd.DataFrame]) -> List[pd.DataFrame]:
         infos = []
         reqs = []
@@ -24,11 +25,11 @@ class LatestTabularize(ObjProcessor):
             record['latest'] = json.loads(record['latest'])
             info = LatestTabularize.simplify_record(record)
             _reqs = LatestTabularize.simplify_requires_dist(record)
-            _urls = LatestTabularize.simplify_project_urls(record)            
+            _urls = LatestTabularize.simplify_project_urls(record)
             infos.append(info)
             reqs.extend(_reqs)
             urls.extend(_urls)
-        
+
         package_df = pd.DataFrame(infos)
         requirement_df = pd.DataFrame(reqs)
         urls_df = pd.DataFrame(urls)
@@ -39,13 +40,14 @@ class LatestTabularize(ObjProcessor):
         print('Requirement Table Size:', len(requirement_df))
         print('Url Table Size:', len(urls_df))
         return [package_df, requirement_df, urls_df]
-    
+
     @staticmethod
-    def simplify_record(record: Dict) -> Dict[str, Union[str, int, float, None]]:
+    def simplify_record(
+            record: Dict) -> Dict[str, Union[str, int, float, None]]:
         """Simplify the nestest record dictionary
 
         Args:
-            record (Dict): A nested dictionary 
+            record (Dict): A nested dictionary
 
         Returns:
             Dict: The simplified dictionary that is not nested
@@ -69,11 +71,12 @@ class LatestTabularize(ObjProcessor):
         }
 
     @staticmethod
-    def simplify_requires_dist(record: Dict) -> List[Dict[str, Union[str, int, float, None]]]:
+    def simplify_requires_dist(
+            record: Dict) -> List[Dict[str, Union[str, int, float, None]]]:
         """Simply nested componenet - requires_dict in record
 
         Args:
-            record (Dict): A nested dictionary 
+            record (Dict): A nested dictionary
 
         Returns:
             List[Dict]:  List of the simplified dictionary that is not nested
@@ -84,17 +87,18 @@ class LatestTabularize(ObjProcessor):
                 {
                     'pkg_name': record['name'],
                     'requirement': e
-                }  for e in data
+                } for e in data
             ]
         else:
             return []
 
     @staticmethod
-    def simplify_project_urls(record: Dict) -> List[Dict[str, Union[str, int, float, None]]]:
+    def simplify_project_urls(
+            record: Dict) -> List[Dict[str, Union[str, int, float, None]]]:
         """Simply nested componenet - project_urls in record
 
         Args:
-            record (Dict): A nested dictionary 
+            record (Dict): A nested dictionary
 
         Returns:
             List[Dict]:  List of the simplified dictionary that is not nested
@@ -104,8 +108,8 @@ class LatestTabularize(ObjProcessor):
                 {
                     'pkg_name': record['name'],
                     'url_type': key,
-                    'url': value 
-                }  for key, value in record['latest']['info']['project_urls'].items() if value is not None
+                    'url': value
+                } for key, value in record['latest']['info']['project_urls'].items() if value is not None
             ]
         else:
             return []

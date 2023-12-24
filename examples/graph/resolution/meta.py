@@ -1,6 +1,6 @@
 """
 TODO:
-- [X] Enable Not Provide of Canon Node & Canon Lambda 
+- [X] Enable Not Provide of Canon Node & Canon Lambda
 - [X] Adding links / nodes property convertion to MetaGraph class
 """
 from typing import List, Dict, Callable, Optional, Tuple, Set
@@ -8,17 +8,19 @@ from ..group import GroupingMeta
 
 __all__ = ['ERMeta']
 
+
 class ERMeta:
     """Data Class holding Metadata about Entity Resolution
     """
-    def __init__(self, 
-                 subgraphs: Dict[str, Tuple[str, str]], 
-                 messy_node: str, 
-                 dedupe_fields: List[Dict[str, str]], 
-                 messy_lambda: Callable=lambda record: record, 
-                 canon_node: Optional[str] = None, 
-                 canon_lambda: Callable=lambda record: record
-        ):
+
+    def __init__(self,
+                 subgraphs: Dict[str, Tuple[str, str]],
+                 messy_node: str,
+                 dedupe_fields: List[Dict[str, str]],
+                 messy_lambda: Callable = lambda record: record,
+                 canon_node: Optional[str] = None,
+                 canon_lambda: Callable = lambda record: record
+                 ):
         self.subgraphs = subgraphs
         self.messy_node = messy_node
         self.messy_items = self.get_messy_items()
@@ -36,13 +38,15 @@ class ERMeta:
         """
         Attach ER to Metagraph
 
-        In detail, 
+        In detail,
             1. Read subgraphs and determine which node or link and which columns should be ID converted.
             2. Add IDConvertor infos to a data variable.
             3. Change meta original links/nodes property to new links/nodes property.
         """
-        assert len(self.id_convertion_messy_items) == 0, 'def alter_grouping_way should only be called once'
-        self.repeated_items: Dict[str, str] = dict([(item[0], item[0]) for item in self.messy_items])
+        assert len(
+            self.id_convertion_messy_items) == 0, 'def alter_grouping_way should only be called once'
+        self.repeated_items: Dict[str, str] = dict(
+            [(item[0], item[0]) for item in self.messy_items])
         for messy_item, column in self.messy_items:
             current_nm = self.repeated_items[messy_item]
             self.id_convertion_messy_items.append((current_nm, column))
@@ -53,7 +57,7 @@ class ERMeta:
                 meta.alter_input_link(current_nm, new_nm)
             self.repeated_items[messy_item] = new_nm
         return meta
-    
+
     @property
     def input_ids(self) -> List[str]:
         results = [self.messy_node]
@@ -62,7 +66,7 @@ class ERMeta:
         for messy_item, _ in self.messy_items:
             results.append(messy_item)
         return list(set(results))
-    
+
     @property
     def output_ids(self) -> List[str]:
         results = []

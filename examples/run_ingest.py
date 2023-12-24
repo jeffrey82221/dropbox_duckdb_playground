@@ -1,5 +1,6 @@
 import os
 
+
 def ingest_to_redisgraph():
     url = 'redis://localhost:9001'
     graph_name = 'PYPI'

@@ -3,6 +3,6 @@ from .messy_v2 import MessyMatcher
 
 
 __all__ = [
-    'CanonMatcher', 
+    'CanonMatcher',
     'MessyMatcher'
 ]

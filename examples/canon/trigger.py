@@ -1,5 +1,5 @@
 """
-Get PyPi Name 
+Get PyPi Name
 """
 from typing import List
 import requests
@@ -9,11 +9,12 @@ from batch_framework.etl import ObjProcessor
 
 URL = "https://pypi.python.org/simple/"
 
+
 class PyPiNameTrigger(ObjProcessor):
     @property
     def input_ids(self):
         return []
-    
+
     @property
     def output_ids(self):
         return ['name_trigger']

@@ -1,14 +1,14 @@
 from graph import ERMeta, MetaGraph
 
 subgraphs = {
-        'has_requirement': ('package', 'requirement'),
-        'has_author': ('package', 'author'), 
-        'has_maintainer': ('package', 'maintainer'), 
-        'has_license': ('package', 'license'), 
-        'has_docs_url': ('package', 'docs_url'), 
-        'has_home_page': ('package', 'home_page'), 
-        'has_project_url': ('package', 'project_url')
-    }
+    'has_requirement': ('package', 'requirement'),
+    'has_author': ('package', 'author'),
+    'has_maintainer': ('package', 'maintainer'),
+    'has_license': ('package', 'license'),
+    'has_docs_url': ('package', 'docs_url'),
+    'has_home_page': ('package', 'home_page'),
+    'has_project_url': ('package', 'project_url')
+}
 
 metagraph = MetaGraph(
     subgraphs=subgraphs,
@@ -39,9 +39,9 @@ metagraph = MetaGraph(
         """
     },
     link_grouping={
-        'has_url': ['has_project_url', 'has_docs_url',  'has_home_page']
+        'has_url': ['has_project_url', 'has_docs_url', 'has_home_page']
     },
-    link_grouping_sqls = {
+    link_grouping_sqls={
         'has_url': """
             t0.from_id,
             t0.to_id,
@@ -178,7 +178,7 @@ metagraph = MetaGraph(
         """,
         # Has License Link
         'has_license': """
-        WITH 
+        WITH
             count_table AS (
                 SELECT
                     license,
@@ -198,7 +198,7 @@ metagraph = MetaGraph(
                     AND count >= 2
             ),
             link_table AS (
-                SELECT 
+                SELECT
                     DISTINCT ON (license, pkg_name)
                     HASH(pkg_name) AS from_id,
                     HASH(license) AS to_id,
@@ -209,7 +209,7 @@ metagraph = MetaGraph(
             to_id
         FROM link_table
         WHERE EXISTS (
-            SELECT * FROM node_table 
+            SELECT * FROM node_table
             WHERE node_table.node_id = link_table.to_id
         )
         """,

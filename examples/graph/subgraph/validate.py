@@ -21,7 +21,7 @@ class Validator(ETLGroup):
         results.extend(self.metagraph.nodes)
         results.extend(self.metagraph.links)
         return results
-    
+
     @property
     def output_ids(self):
         return []
@@ -30,7 +30,16 @@ class Validator(ETLGroup):
     def validator_list(self):
         results = []
         for link, (src_node, target_node) in self.metagraph._subgraphs.items():
-            results.append(LinkIDValidator(link, src_node, 'from_id', self._storage))
-            results.append(LinkIDValidator(link, target_node, 'to_id', self._storage))
+            results.append(
+                LinkIDValidator(
+                    link,
+                    src_node,
+                    'from_id',
+                    self._storage))
+            results.append(
+                LinkIDValidator(
+                    link,
+                    target_node,
+                    'to_id',
+                    self._storage))
         return results
-

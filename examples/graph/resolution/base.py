@@ -8,12 +8,15 @@ from .meta import ERMeta
 
 __all__ = ['ERBase', 'Messy2Canon', 'MessyOnly']
 
+
 class ERBase(ObjProcessor):
     """
-    Base class for building 
+    Base class for building
     NodeMappingLearner & NodeMappingProducer
     """
-    def __init__(self, meta: ERMeta, input_storage: PandasStorage, output_storage: JsonStorage, model_fs: FileSystem):
+
+    def __init__(self, meta: ERMeta, input_storage: PandasStorage,
+                 output_storage: JsonStorage, model_fs: FileSystem):
         self._meta = meta
         self._model_fs = model_fs
         super().__init__(input_storage, output_storage)
@@ -21,7 +24,7 @@ class ERBase(ObjProcessor):
     @property
     def messy_node(self):
         return self._meta.messy_node
-    
+
     @property
     def canon_node(self):
         return self._meta.canon_node
@@ -33,19 +36,25 @@ class ERBase(ObjProcessor):
     def _extract_messy_feature(self, df: pd.DataFrame) -> Dict[str, Dict]:
         results = []
         for record in df.to_dict('records'):
-            results.append((str(record['node_id']), self._meta.messy_lambda(record)))
+            results.append(
+                (str(
+                    record['node_id']),
+                    self._meta.messy_lambda(record)))
         return dict(results)
 
     def _extract_canonical_feature(self, df: pd.DataFrame) -> Dict:
         results = []
         for record in df.to_dict('records'):
-            results.append((str(record['node_id']), self._meta.canon_lambda(record)))
+            results.append(
+                (str(
+                    record['node_id']),
+                    self._meta.canon_lambda(record)))
         return dict(results)
 
     @property
     def train_file_name(self):
         return f'{self.label}_train'
-    
+
     @property
     def model_file_name(self):
         return f'{self.label}.model'
@@ -58,6 +67,7 @@ class ERBase(ObjProcessor):
     def label(self):
         raise NotImplementedError
 
+
 class Messy2Canon:
     @property
     def input_ids(self):
@@ -65,10 +75,11 @@ class Messy2Canon:
             self.messy_node,
             self.canon_node
         ]
-    
+
     @property
     def label(self):
         return f'{self.messy_node}2{self.canon_node}'
+
 
 class MessyOnly:
     @property
@@ -76,7 +87,7 @@ class MessyOnly:
         return [
             self.messy_node
         ]
-    
+
     @property
     def label(self):
         return self.messy_node

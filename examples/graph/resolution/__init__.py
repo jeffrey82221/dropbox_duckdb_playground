@@ -3,8 +3,8 @@ from .learner import CanonMatchLearner, MessyMatchLearner
 from .main import MappingGenerator
 
 __all__ = [
-    'ERMeta', 
-    'CanonMatchLearner', 
+    'ERMeta',
+    'CanonMatchLearner',
     'MessyMatchLearner',
     'MappingGenerator'
 ]

@@ -13,21 +13,27 @@ from .mapper import CanonMatcher
 from .mapper import MessyMatcher
 from .convertor import IDConvertor
 
+
 class MappingGenerator(ETLGroup):
-    def __init__(self, meta: ERMeta, subgraph_fs: FileSystem, mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB):
+    def __init__(self, meta: ERMeta, subgraph_fs: FileSystem,
+                 mapping_fs: FileSystem, model_fs: FileSystem, rdb: RDB):
         self._mapping_fs = mapping_fs
         etl_layers = []
         if meta.has_canon:
             etl_layers.append(
                 CanonMatcher(meta,
-                    PandasStorage(subgraph_fs), 
-                    PandasStorage(mapping_fs),
-                    model_fs=model_fs,
-                    threshold=0.25
-                )
+                             PandasStorage(subgraph_fs),
+                             PandasStorage(mapping_fs),
+                             model_fs=model_fs,
+                             threshold=0.25
+                             )
             )
             etl_layers.append(
-                MessyInput(meta, rdb, input_fs=subgraph_fs, output_fs=mapping_fs)
+                MessyInput(
+                    meta,
+                    rdb,
+                    input_fs=subgraph_fs,
+                    output_fs=mapping_fs)
             )
             etl_layers.append(
                 MessyFilter(meta, rdb, workspace_fs=mapping_fs)
@@ -88,7 +94,7 @@ class MappingGenerator(ETLGroup):
     @property
     def input_ids(self):
         return self._meta.input_ids
-    
+
     @property
     def output_ids(self):
         return self._meta.output_ids
@@ -101,7 +107,9 @@ class MessyInput(SQLExecutor):
     """
     Passing messy input to mapping_fs
     """
-    def __init__(self, meta: ERMeta, rdb: RDB, input_fs: FileSystem, output_fs: FileSystem):
+
+    def __init__(self, meta: ERMeta, rdb: RDB,
+                 input_fs: FileSystem, output_fs: FileSystem):
         self._meta = meta
         super().__init__(rdb, input_fs=input_fs, output_fs=output_fs)
 
@@ -116,20 +124,22 @@ class MessyInput(SQLExecutor):
         return [
             f'{self._meta.messy_node}' + '_input'
         ]
-    
+
     def sqls(self):
         return {
             self.output_ids[0]: f"""
-                SELECT 
+                SELECT
                     *
                 FROM {self.input_ids[0]}
             """
         }
 
+
 class MessyFilter(SQLExecutor):
     """
     Filter Messy Node by using canon mapper
     """
+
     def __init__(self, meta: ERMeta, rdb: RDB, workspace_fs: FileSystem):
         self._workspace_fs = workspace_fs
         self._meta = meta
@@ -147,33 +157,33 @@ class MessyFilter(SQLExecutor):
         return [
             f'{self._meta.messy_node}' + '_filtered'
         ]
-    
+
     def sqls(self):
         return {
             self.output_ids[0]: f"""
-                SELECT 
+                SELECT
                     *
                 FROM {self.input_ids[0]} AS messy_table
                 WHERE NOT EXISTS (
-                    SELECT 
+                    SELECT
                         *
                     FROM {self.input_ids[1]} AS mapping_table
                     WHERE mapping_table.messy_id = messy_table.node_id
                 )
             """
         }
-    
 
-        
+
 class MessyMappingPassor(SQLExecutor):
     """
     Passing Messy2clean to Next Stage
     """
+
     def __init__(self, meta: ERMeta, rdb: RDB, workspace_fs: FileSystem):
         self._workspace_fs = workspace_fs
         self._meta = meta
         super().__init__(rdb, input_fs=workspace_fs, output_fs=workspace_fs)
-    
+
     @property
     def input_ids(self):
         return [
@@ -189,22 +199,24 @@ class MessyMappingPassor(SQLExecutor):
     def sqls(self):
         return {
             self.output_ids[0]: f"""
-                SELECT 
+                SELECT
                     messy_id,
                     cluster_id AS new_id
                 FROM mapper_{self._meta.messy_node}
             """
         }
-    
+
+
 class MappingCombiner(SQLExecutor):
     """
     Combine Messy2clean and Messy2Canon Mapping
     """
+
     def __init__(self, meta: ERMeta, rdb: RDB, workspace_fs: FileSystem):
         self._workspace_fs = workspace_fs
         self._meta = meta
         super().__init__(rdb, input_fs=workspace_fs, output_fs=workspace_fs)
-        
+
     @property
     def input_ids(self):
         return [
@@ -224,9 +236,9 @@ class MappingCombiner(SQLExecutor):
                     canon_id AS new_id
                 FROM mapper_{self._meta.messy_node}2{self._meta.canon_node}
                 UNION ALL
-                SELECT 
+                SELECT
                     messy_id,
                     cluster_id AS new_id
-                FROM mapper_{self._meta.messy_node}    
+                FROM mapper_{self._meta.messy_node}
             """
         }

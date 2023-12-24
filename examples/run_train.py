@@ -1,5 +1,5 @@
 """
-Mapping Similar Nodes. 
+Mapping Similar Nodes.
 
 TODO:
 - [ ] Build Threshold Tunner
@@ -25,19 +25,19 @@ model_fs = LocalBackend('./data/model/')
 
 canon_learner = CanonMatchLearner(
     er_meta_requirement,
-    PandasStorage(subgraph_fs), 
+    PandasStorage(subgraph_fs),
     JsonStorage(train_fs),
     model_fs=model_fs
 )
 messy_learner = MessyMatchLearner(
-    er_meta_requirement, 
-    PandasStorage(subgraph_fs), 
+    er_meta_requirement,
+    PandasStorage(subgraph_fs),
     JsonStorage(train_fs),
     model_fs=model_fs
 )
 license_messy_learner = MessyMatchLearner(
     er_meta_license,
-    PandasStorage(subgraph_fs), 
+    PandasStorage(subgraph_fs),
     JsonStorage(train_fs),
     model_fs=model_fs
 )

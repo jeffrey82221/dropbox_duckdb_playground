@@ -7,11 +7,14 @@ from .extractor import NodeExtractor, LinkExtractor
 from .validate import Validator
 from ..metagraph import MetaGraph
 
+
 class SubgraphExtractor(ETLGroup):
     """
     Extract Link and Node from Raw Tabular Data
     """
-    def __init__(self, metagraph: MetaGraph, rdb: RDB, input_fs: FileSystem, output_fs: FileSystem):
+
+    def __init__(self, metagraph: MetaGraph, rdb: RDB,
+                 input_fs: FileSystem, output_fs: FileSystem):
         self._metagraph = metagraph
         link_op = LinkExtractor(
             metagraph=metagraph, rdb=rdb, input_fs=input_fs, output_fs=output_fs)
@@ -23,10 +26,10 @@ class SubgraphExtractor(ETLGroup):
     @property
     def input_ids(self) -> List[str]:
         return self._metagraph.input_ids
-    
+
     @property
     def output_ids(self) -> List[str]:
         return self._metagraph.nodes + self._metagraph.links
-    
+
     def end(self, **kwargs):
         self.drop_internal_objs()

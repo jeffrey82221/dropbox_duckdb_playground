@@ -21,7 +21,7 @@ class Validator(ETLGroup):
         results.extend(self.metagraph.output_nodes)
         results.extend(self.metagraph.output_links)
         return results
-    
+
     @property
     def output_ids(self):
         return []
@@ -30,11 +30,10 @@ class Validator(ETLGroup):
     def validator_list(self):
         results = []
         for link, (src_node, dest_node) in self.metagraph.triplets.items():
-            results.append(LinkIDValidator(f'link_{link}_final', 
-                                           f'node_{src_node}_final', 
+            results.append(LinkIDValidator(f'link_{link}_final',
+                                           f'node_{src_node}_final',
                                            'from_id', self._storage))
-            results.append(LinkIDValidator(f'link_{link}_final', 
-                                           f'node_{dest_node}_final', 
+            results.append(LinkIDValidator(f'link_{link}_final',
+                                           f'node_{dest_node}_final',
                                            'to_id', self._storage))
         return results
-
