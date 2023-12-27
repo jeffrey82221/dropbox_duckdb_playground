@@ -29,7 +29,8 @@ class ETL:
     Basic Interface for defining a unit of ETL flow.
     """
 
-    def __init__(self, input_storage: Optional[Storage]=None, output_storage: Optional[Storage]=None, make_cache: bool=False):
+    def __init__(self, input_storage: Optional[Storage] = None,
+                 output_storage: Optional[Storage] = None, make_cache: bool = False):
         assert isinstance(
             self.input_ids, list), f'property input_ids is not a list of string but {type(self.input_ids)} on {self}'
         assert isinstance(
@@ -81,7 +82,7 @@ class ETL:
         e.g., creating output table if not exists
         """
         pass
-    
+
     def _end(self, **kwargs) -> None:
         self.end(**kwargs)
         if self._make_cache:
@@ -97,7 +98,7 @@ class ETL:
             if not self._output_storage.check_exists(id + '_cache'):
                 return False
         return True
-    
+
     def _save_cache(self):
         assert self._make_cache, 'cannot save cache when make_cache=False'
         for input_id in self.input_ids:
@@ -120,7 +121,6 @@ class ETL:
         else:
             raise ValueError(
                 'id to be loaded in load_cache should be in self.input_ids or self.output_ids')
-
 
     @abc.abstractmethod
     def end(self, **kwargs) -> None:
@@ -171,6 +171,7 @@ class ETL:
                     self._output_storage.drop(id)
             else:
                 self._rdb.drop(id)
+
 
 class DagExecutor:
     """Executing Unit for Tasks in the Dag"""
@@ -308,12 +309,13 @@ class ETLGroup(ETL):
         self.end()
         self.drop_internal_objs()
 
+
 class SQLExecutor(ETL):
     """Basic interface for SQL executor
     """
 
     def __init__(
-            self, rdb: RDB, input_fs: Optional[FileSystem] = None, output_fs: Optional[FileSystem] = None, make_cache: bool=False):
+            self, rdb: RDB, input_fs: Optional[FileSystem] = None, output_fs: Optional[FileSystem] = None, make_cache: bool = False):
         assert isinstance(rdb, RDB), 'rdb is not RDB type'
         self._rdb = rdb
         if input_fs is not None:
@@ -342,7 +344,6 @@ class SQLExecutor(ETL):
         for key in self.sqls():
             assert key in self.output_ids, f'sql of field {key} does not have corresponding output_id'
         super().__init__(input_storage, output_storage, make_cache=make_cache)
-
 
     @abc.abstractmethod
     def sqls(self, **kwargs) -> Dict[str, str]:
@@ -398,7 +399,7 @@ class ObjProcessor(ETL):
     """
 
     def __init__(self, input_storage: Storage,
-                 output_storage: Optional[Storage] = None, make_cache: bool=False):
+                 output_storage: Optional[Storage] = None, make_cache: bool = False):
         input_storage = input_storage
         if output_storage is None:
             output_storage = input_storage

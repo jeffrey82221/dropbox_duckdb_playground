@@ -287,10 +287,11 @@ class MessyPairSelector(MessyOnly, MatcherBase):
     Input Entity Mapping Table
     Output Id-Id Pairing Table
     """
+
     def __init__(self, *args, **kwargs):
         kwargs['make_cache'] = True
         super().__init__(*args, **kwargs)
-        
+
     def start(self):
         """Load model setting in the beginning
         """

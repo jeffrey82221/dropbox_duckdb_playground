@@ -16,7 +16,7 @@ class ERBase(ObjProcessor):
     """
 
     def __init__(self, meta: ERMeta, input_storage: PandasStorage,
-                 output_storage: JsonStorage, model_fs: FileSystem, make_cache: bool=False):
+                 output_storage: JsonStorage, model_fs: FileSystem, make_cache: bool = False):
         self._meta = meta
         self._model_fs = model_fs
         super().__init__(input_storage, output_storage, make_cache=make_cache)

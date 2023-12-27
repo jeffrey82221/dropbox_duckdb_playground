@@ -91,6 +91,7 @@ class Pairer(Messy2Canon, MatcherBase):
     def __init__(self, *args, **kwargs):
         kwargs['make_cache'] = True
         super().__init__(*args, **kwargs)
+
     @property
     def input_ids(self):
         return [self._meta.messy_node + '_m2c_feature',
@@ -115,8 +116,10 @@ class Pairer(Messy2Canon, MatcherBase):
                   **kwargs) -> List[pd.DataFrame]:
         if self.exists_cache:
             # Load Cache
-            feedback_messy_ids = set(self.load_cache(self.input_ids[0])['node_id'].tolist())
-            feedback_canon_ids = set(self.load_cache(self.input_ids[1])['node_id'].tolist())
+            feedback_messy_ids = set(self.load_cache(
+                self.input_ids[0])['node_id'].tolist())
+            feedback_canon_ids = set(self.load_cache(
+                self.input_ids[1])['node_id'].tolist())
             feedback_table = self.load_cache(self.output_ids[0])
             print('Cache Loaded')
             messy_df = inputs[0]
@@ -198,6 +201,7 @@ class Pairer(Messy2Canon, MatcherBase):
         print('Finish Matching...')
         self.start()
         return [final_table]
+
 
 class CanonMatcher(ETLGroup, Messy2Canon, MatcherBase):
     def __init__(self, mapping_meta: ERMeta, input_storage: PandasStorage,

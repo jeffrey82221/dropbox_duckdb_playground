@@ -16,7 +16,7 @@ class PyPiNameTrigger(ObjProcessor):
                  test_count: Optional[int] = None):
         self._test_count = test_count
         super().__init__(input_storage=input_storage)
-        
+
     @property
     def input_ids(self):
         return []

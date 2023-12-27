@@ -25,7 +25,6 @@ from batch_framework.etl import ObjProcessor
 RETRIES_COUNT = 3
 
 
-
 def process_latest(data: Dict) -> Dict:
     results = dict()
     results['info'] = data['info']
@@ -93,9 +92,10 @@ class LatestUpdator(ObjProcessor):
     """
     - [X] `Update` takes output of LatestDownloader as input and PyPiNameTrigger as input
         - [X] Step 1: Load output cache and update the Json.
-        - [X] Step 2: append new json data to the updated cache. 
+        - [X] Step 2: append new json data to the updated cache.
         - [X] Step 3: Save output.
     """
+
     def __init__(self, *args, **kwargs):
         kwargs['make_cache'] = True
         self._do_update = kwargs['do_update']
@@ -115,25 +115,32 @@ class LatestUpdator(ObjProcessor):
         if not self.exists_cache:
             return [inputs[0]]
         else:
-            # 1. load cached name and etag 
-            latest_cache = self.load_cache(self.output_ids[0])['name', 'etag'].to_pandas_df()
+            # 1. load cached name and etag
+            latest_cache = self.load_cache(self.output_ids[0])[
+                'name', 'etag'].to_pandas_df()
             if self._do_update:
-                # 2. update latest_cache based on name and etag pandas dataframe
-                updated_latest = self._get_updated_package_records(latest_cache)
+                # 2. update latest_cache based on name and etag pandas
+                # dataframe
+                updated_latest = self._get_updated_package_records(
+                    latest_cache)
                 print('Total Updated Count:', len(updated_latest))
-                # 3. Append updated_latest (pd), latest_new (vx), latest_cache (vx)
+                # 3. Append updated_latest (pd), latest_new (vx), latest_cache
+                # (vx)
                 latest = vx.concat([
                     vx.from_pandas(updated_latest),
                     inputs[0],
-                    self.load_cache(self.output_ids[0]) # select those not in updated_latest
+                    # select those not in updated_latest
+                    self.load_cache(self.output_ids[0])
                 ]).to_pandas_df()
                 # 4. Do dedupe operation on combined vaex dataframe
-                latest.drop_duplicates(subset=['name'], keep='first', inplace=True)
+                latest.drop_duplicates(
+                    subset=['name'], keep='first', inplace=True)
                 return [vx.from_pandas(latest)]
             else:
                 latest = vx.concat([
                     inputs[0],
-                    self.load_cache(self.output_ids[0]) # select those not in updated_latest
+                    # select those not in updated_latest
+                    self.load_cache(self.output_ids[0])
                 ])
                 return [latest]
 
@@ -165,7 +172,7 @@ class LatestUpdator(ObjProcessor):
             results, columns=['name', 'latest', 'etag'])
         new_df['latest'] = new_df['latest'].map(lambda x: json.dumps(x))
         return new_df
-    
+
     def _update_with_etag(
             self, name: str, etag: str) -> Optional[Tuple[Dict, str]]:
         """Update latest json data given package name and etag.
@@ -199,5 +206,3 @@ class LatestUpdator(ObjProcessor):
             return latest, etag
         else:
             return '304'
-
-
