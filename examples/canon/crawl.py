@@ -11,11 +11,7 @@ TODO:
     - [X] Download new package records -> Decorate with MapReduce
     - [X] Update package records -> Decorate with MapReduce
     - [X] Combine package records
-- [ ] Reduce RAM usage:
-    - [-] LatestFeedback -> Use streaming for copying
-    - [-] Load Two kinds of feedback: 1) with latest json 2) without latest json
-    - [ ] `Combine` use DuckDB to leverage zero-copy capability
-    - [ ] `Combine` use polaris to leverage zero-copy with drop_duplicate functionality
+- [X] Reduce RAM usage by using vaex
 """
 from typing import List, Dict, Tuple, Optional
 import requests
@@ -25,80 +21,19 @@ import tqdm
 import time
 import json
 from batch_framework.etl import ObjProcessor
-from batch_framework.storage import PandasStorage
 
 RETRIES_COUNT = 3
 
 
-class LatestFeedback(ObjProcessor):
-    @property
-    def input_ids(self):
-        return []
 
-    @property
-    def output_ids(self):
-        return ['latest_feedback']
-
-    def transform(self, inputs: List[vx.DataFrame],
-                  **kwargs) -> List[vx.DataFrame]:
-        if not self._input_storage.check_exists('latest'):
-            latest_df = vx.from_pandas(
-                pd.DataFrame.from_records(
-                    [], columns=[
-                        'name', 'latest', 'etag']))
-            print('latest_feedback created')
-        else:
-            latest_df = self._input_storage.download('latest')
-            print('latest_feedback loaded')
-        print("Done loading latest for latest_feedback: ", len(latest_df))
-        return [latest_df]
+def process_latest(data: Dict) -> Dict:
+    results = dict()
+    results['info'] = data['info']
+    results['info']['num_releases'] = len(data['releases'])
+    return results
 
 
-class NewPackageExtractor(ObjProcessor):
-    def __init__(self, input_storage: PandasStorage,
-                 test_count: Optional[int] = None):
-        self._test_count = test_count
-        super().__init__(input_storage=input_storage)
-
-    @property
-    def input_ids(self):
-        return ['name_trigger', 'latest_feedback']
-
-    @property
-    def output_ids(self):
-        return ['name_trigger_new']
-
-    def transform(self, inputs: List[vx.DataFrame],
-                  **kwargs) -> List[vx.DataFrame]:
-        pkg_name_df = inputs[0]
-        latest_df = inputs[1]
-        print('Size of pkg_name:', len(pkg_name_df))
-        print('Size of latest_feedback:', len(latest_df))
-        new_pkg_names = self._get_new_package_names(pkg_name_df, latest_df)
-        assert len(new_pkg_names) > 0, 'Should download new package'
-        print('number of new packages:', len(new_pkg_names))
-        return [vx.from_pandas(pd.DataFrame(new_pkg_names, columns=['name']))]
-
-    def _get_new_package_names(
-            self, pkg_name_df: pd.DataFrame, latest_df: pd.DataFrame) -> List[str]:
-        pkg_names = pkg_name_df[['name']].to_arrays(array_type='list')[0]
-        latest_names = latest_df[['name']].to_arrays(array_type='list')[0]
-        new_names = list(set(pkg_names) - set(latest_names))
-        if self._test_count is None:
-            return new_names
-        else:
-            return new_names[:self._test_count]
-
-
-class LatestProcessor:
-    def process_latest(self, data: Dict) -> Dict:
-        results = dict()
-        results['info'] = data['info']
-        results['info']['num_releases'] = len(data['releases'])
-        return results
-
-
-class LatestDownloader(ObjProcessor, LatestProcessor):
+class LatestDownloader(ObjProcessor):
     @property
     def input_ids(self):
         return ['name_trigger_new']
@@ -138,7 +73,7 @@ class LatestDownloader(ObjProcessor, LatestProcessor):
                 continue
             assert res.status_code == 200, f'response status code is {res.status_code}'
             latest = res.json()
-            latest = self.process_latest(latest)
+            latest = process_latest(latest)
             etag = res.headers["ETag"]
             results.append((name, latest, etag))
         return pd.DataFrame.from_records(
@@ -154,43 +89,53 @@ class LatestDownloader(ObjProcessor, LatestProcessor):
                 time.sleep(5)
 
 
-class LatestUpdatorInputReduce(ObjProcessor):
+class LatestUpdator(ObjProcessor):
+    """
+    - [X] `Update` takes output of LatestDownloader as input and PyPiNameTrigger as input
+        - [X] Step 1: Load output cache and update the Json.
+        - [X] Step 2: append new json data to the updated cache. 
+        - [X] Step 3: Save output.
+    """
+    def __init__(self, *args, **kwargs):
+        kwargs['make_cache'] = True
+        self._do_update = kwargs['do_update']
+        del kwargs['do_update']
+        super().__init__(*args, **kwargs)
+
     @property
     def input_ids(self):
-        return ['latest_feedback']
+        return ['latest_new']
 
     @property
     def output_ids(self):
-        return ['latest_feedback_reduced']
+        return ['latest']
 
     def transform(self, inputs: List[vx.DataFrame],
                   **kwargs) -> List[vx.DataFrame]:
-        return [inputs[0]['name', 'etag']]
-
-
-class LatestUpdator(ObjProcessor, LatestProcessor):
-    @property
-    def input_ids(self):
-        return ['latest_feedback_reduced']
-
-    @property
-    def output_ids(self):
-        return ['latest_updated']
-
-    def transform(self, inputs: List[pd.DataFrame],
-                  **kwargs) -> List[pd.DataFrame]:
-        assert len(
-            inputs) == 1, 'LatestUpdator should have 1 input from latest_feedback'
-        try:
-            df = inputs[0]
-            for col in df.columns:
-                if col not in ['name', 'etag']:
-                    del df[col]
-            new_df = self._get_updated_package_records(df)
-            new_df['latest'] = new_df['latest'].map(lambda x: json.dumps(x))
-            return [new_df]
-        except Exception as e:
-            raise e
+        if not self.exists_cache:
+            return [inputs[0]]
+        else:
+            # 1. load cached name and etag 
+            latest_cache = self.load_cache(self.output_ids[0])['name', 'etag'].to_pandas_df()
+            if self._do_update:
+                # 2. update latest_cache based on name and etag pandas dataframe
+                updated_latest = self._get_updated_package_records(latest_cache)
+                print('Total Updated Count:', len(updated_latest))
+                # 3. Append updated_latest (pd), latest_new (vx), latest_cache (vx)
+                latest = vx.concat([
+                    vx.from_pandas(updated_latest),
+                    inputs[0],
+                    self.load_cache(self.output_ids[0]) # select those not in updated_latest
+                ]).to_pandas_df()
+                # 4. Do dedupe operation on combined vaex dataframe
+                latest.drop_duplicates(subset=['name'], keep='first', inplace=True)
+                return [vx.from_pandas(latest)]
+            else:
+                latest = vx.concat([
+                    inputs[0],
+                    self.load_cache(self.output_ids[0]) # select those not in updated_latest
+                ])
+                return [latest]
 
     def _get_updated_package_records(
             self, latest_df: pd.DataFrame) -> pd.DataFrame:
@@ -210,18 +155,17 @@ class LatestUpdator(ObjProcessor, LatestProcessor):
             name_etag_pipe,
             total=total,
             desc='get_updated_package_records')
-        for i, (name, etag) in enumerate(name_etag_pipe):
+        for _, (name, etag) in enumerate(name_etag_pipe):
             result = self._update_with_etag(name, etag)
             if not isinstance(result, str):
                 latest, etag = result
-                latest = self.process_latest(latest)
+                latest = process_latest(latest)
                 results.append((name, latest, etag))
-                # print(f'[_get_updated_package_records] {i+1}/{total} {name} Download')
-            # else:
-                # print(f'[_get_updated_package_records] {i}/{total} {name} skipped due to {result}')
-        return pd.DataFrame.from_records(
+        new_df = pd.DataFrame.from_records(
             results, columns=['name', 'latest', 'etag'])
-
+        new_df['latest'] = new_df['latest'].map(lambda x: json.dumps(x))
+        return new_df
+    
     def _update_with_etag(
             self, name: str, etag: str) -> Optional[Tuple[Dict, str]]:
         """Update latest json data given package name and etag.
@@ -257,38 +201,3 @@ class LatestUpdator(ObjProcessor, LatestProcessor):
             return '304'
 
 
-class Combine(ObjProcessor):
-    @property
-    def input_ids(self):
-        return ['latest_new', 'latest_updated', 'latest_feedback']
-
-    @property
-    def output_ids(self):
-        return ['latest']
-
-    def transform(self, inputs: List[pd.DataFrame],
-                  **kwargs) -> List[pd.DataFrame]:
-        print(
-            f'Combine latest_new: {len(inputs[0])}, latest_updated: {len(inputs[1])}, latest_feedback: {len(inputs[2])}')
-        result_df = pd.concat(inputs, ignore_index=True)
-        result_df.drop_duplicates(subset=['name'], keep='first', inplace=True)
-        print(f'Combined Size: {len(result_df)}')
-        return [result_df]
-
-
-class Append(ObjProcessor):
-    @property
-    def input_ids(self):
-        return ['latest_new', 'latest_feedback']
-
-    @property
-    def output_ids(self):
-        return ['latest']
-
-    def transform(self, inputs: List[pd.DataFrame],
-                  **kwargs) -> List[pd.DataFrame]:
-        print(
-            f'Combine latest_new: {len(inputs[0])}, latest_feedback: {len(inputs[1])}')
-        result_df = pd.concat(inputs, ignore_index=True)
-        print(f'Combined Size: {len(result_df)}')
-        return [result_df]

@@ -1,16 +1,22 @@
 """
 Get PyPi Name
 """
-from typing import List
+from typing import List, Optional
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 from batch_framework.etl import ObjProcessor
+from batch_framework.storage import PandasStorage
 
 URL = "https://pypi.python.org/simple/"
 
 
 class PyPiNameTrigger(ObjProcessor):
+    def __init__(self, input_storage: PandasStorage,
+                 test_count: Optional[int] = None):
+        self._test_count = test_count
+        super().__init__(input_storage=input_storage)
+        
     @property
     def input_ids(self):
         return []
@@ -21,6 +27,8 @@ class PyPiNameTrigger(ObjProcessor):
 
     def transform(self, inputs: List[pd.DataFrame]) -> List[pd.DataFrame]:
         names = self._download_from_pypi()
+        if self._test_count is not None:
+            names = names[:self._test_count]
         print('number of packages:', len(names))
         return [pd.DataFrame(names, columns=['name'])]
 

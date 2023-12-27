@@ -22,7 +22,6 @@ TODO:
 """
 from typing import List, Dict, Iterator
 import pandas as pd
-import vaex as vx
 import dedupe
 from batch_framework.etl import ETLGroup
 from batch_framework.storage import PandasStorage
@@ -89,6 +88,9 @@ class CanonFeatureEngineer(Messy2Canon, MatcherBase):
 
 
 class Pairer(Messy2Canon, MatcherBase):
+    def __init__(self, *args, **kwargs):
+        kwargs['make_cache'] = True
+        super().__init__(*args, **kwargs)
     @property
     def input_ids(self):
         return [self._meta.messy_node + '_m2c_feature',
@@ -111,17 +113,11 @@ class Pairer(Messy2Canon, MatcherBase):
 
     def transform(self, inputs: List[pd.DataFrame],
                   **kwargs) -> List[pd.DataFrame]:
-        messy_cache_fn = self.input_ids[0] + '_cache'
-        canon_cache_fn = self.input_ids[1] + '_cache'
-        output_cache_fn = self.output_ids[0] + '_cache'
-        if self._input_storage.check_exists(messy_cache_fn) and self._input_storage.check_exists(
-                canon_cache_fn) and self._output_storage.check_exists(output_cache_fn):
+        if self.exists_cache:
             # Load Cache
-            feedback_messy_ids = set(
-                self._input_storage.download(messy_cache_fn)['node_id'].tolist())
-            feedback_canon_ids = set(
-                self._input_storage.download(canon_cache_fn)['node_id'].tolist())
-            feedback_table = self._output_storage.download(output_cache_fn)
+            feedback_messy_ids = set(self.load_cache(self.input_ids[0])['node_id'].tolist())
+            feedback_canon_ids = set(self.load_cache(self.input_ids[1])['node_id'].tolist())
+            feedback_table = self.load_cache(self.output_ids[0])
             print('Cache Loaded')
             messy_df = inputs[0]
             canon_df = inputs[1]
@@ -164,21 +160,6 @@ class Pairer(Messy2Canon, MatcherBase):
                 subset=['messy_id'], keep='first', inplace=True)
             print('# final_table (after groupby):', len(final_table))
             results = [final_table]
-            # Save Cache
-            self._input_storage.upload(pd.DataFrame(
-                [id for id in feedback_messy_ids | messy_ids],
-                columns=['node_id']
-            ), messy_cache_fn)
-            self._input_storage.upload(pd.DataFrame(
-                [id for id in feedback_canon_ids | canon_ids],
-                columns=['node_id']
-            ), canon_cache_fn)
-            self._output_storage.upload(results[0], output_cache_fn)
-            print(
-                'Save Cache',
-                messy_cache_fn,
-                canon_cache_fn,
-                output_cache_fn)
             return results
         else:
             messy_df = inputs[0]
@@ -186,21 +167,6 @@ class Pairer(Messy2Canon, MatcherBase):
             messy_ids = set(messy_df.node_id.tolist())
             canon_ids = set(canon_df.node_id.tolist())
             results = self.match_tables([messy_df, canon_df])
-            # Save Cache
-            self._input_storage.upload(pd.DataFrame(
-                [id for id in messy_ids],
-                columns=['node_id']
-            ), messy_cache_fn)
-            self._input_storage.upload(pd.DataFrame(
-                [id for id in canon_ids],
-                columns=['node_id']
-            ), canon_cache_fn)
-            self._output_storage.upload(results[0], output_cache_fn)
-            print(
-                'Save Cache',
-                messy_cache_fn,
-                canon_cache_fn,
-                output_cache_fn)
             return results
 
     def match_tables(
@@ -232,7 +198,6 @@ class Pairer(Messy2Canon, MatcherBase):
         print('Finish Matching...')
         self.start()
         return [final_table]
-
 
 class CanonMatcher(ETLGroup, Messy2Canon, MatcherBase):
     def __init__(self, mapping_meta: ERMeta, input_storage: PandasStorage,

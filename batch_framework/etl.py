@@ -29,7 +29,7 @@ class ETL:
     Basic Interface for defining a unit of ETL flow.
     """
 
-    def __init__(self):
+    def __init__(self, input_storage: Optional[Storage]=None, output_storage: Optional[Storage]=None, make_cache: bool=False):
         assert isinstance(
             self.input_ids, list), f'property input_ids is not a list of string but {type(self.input_ids)} on {self}'
         assert isinstance(
@@ -42,6 +42,9 @@ class ETL:
                                            ), 'There should no be repeated id in self.output_ids'
         assert all([id in self.input_ids for id in self.external_input_ids]
                    ), 'external input ids should be defined in input ids'
+        self._input_storage = input_storage
+        self._output_storage = output_storage
+        self._make_cache = make_cache
 
     @abc.abstractproperty
     def input_ids(self) -> List[str]:
@@ -70,7 +73,7 @@ class ETL:
     def execute(self, **kwargs):
         self.start(**kwargs)
         self._execute(**kwargs)
-        self.end(**kwargs)
+        self._end(**kwargs)
 
     @abc.abstractmethod
     def start(self, **kwargs) -> None:
@@ -78,6 +81,46 @@ class ETL:
         e.g., creating output table if not exists
         """
         pass
+    
+    def _end(self, **kwargs) -> None:
+        self.end(**kwargs)
+        if self._make_cache:
+            self._save_cache()
+
+    @property
+    def exists_cache(self) -> bool:
+        assert self._make_cache, 'cannot check cache existence when make_cache=False'
+        for id in self.input_ids:
+            if not self._input_storage.check_exists(id + '_cache'):
+                return False
+        for id in self.output_ids:
+            if not self._output_storage.check_exists(id + '_cache'):
+                return False
+        return True
+    
+    def _save_cache(self):
+        assert self._make_cache, 'cannot save cache when make_cache=False'
+        for input_id in self.input_ids:
+            self._input_storage.upload(
+                self._input_storage.download(input_id),
+                input_id + '_cache')
+            print(input_id + '_cache', 'saved')
+        for output_id in self.output_ids:
+            self._output_storage.upload(
+                self._output_storage.download(output_id),
+                output_id + '_cache')
+            print(output_id + '_cache', 'saved')
+
+    def load_cache(self, id: str):
+        assert self._make_cache, 'cannot load cache when make_cache=False'
+        if id in self.input_ids:
+            return self._input_storage.download(id + '_cache')
+        elif id in self.output_ids:
+            return self._output_storage.download(id + '_cache')
+        else:
+            raise ValueError(
+                'id to be loaded in load_cache should be in self.input_ids or self.output_ids')
+
 
     @abc.abstractmethod
     def end(self, **kwargs) -> None:
@@ -114,22 +157,20 @@ class ETL:
         except BaseException as e:
             raise ValueError(f'Dag Build Error on {self}') from e
 
-    @abc.abstractmethod
-    def drop_inputs(self):
-        pass
-
-    @abc.abstractmethod
-    def drop_outputs(self):
-        pass
-
-    @abc.abstractmethod
-    def drop_input(self, obj_id: str):
-        pass
-
-    @abc.abstractmethod
-    def drop_output(self, obj_id: str):
-        pass
-
+    def drop(self, id: str):
+        assert id in self.input_ids or id in self.output_ids, f'id {id} is not in input_ids or output_ids'
+        if id in self.input_ids:
+            if self._input_storage is not None:
+                if self._input_storage.check_exists(id):
+                    self._input_storage.drop(id)
+            else:
+                self._rdb.drop(id)
+        else:
+            if self._output_storage is not None:
+                if self._output_storage.check_exists(id):
+                    self._output_storage.drop(id)
+            else:
+                self._rdb.drop(id)
 
 class DagExecutor:
     """Executing Unit for Tasks in the Dag"""
@@ -231,16 +272,16 @@ class ETLGroup(ETL):
             ), f'output_id {_id} is not in dag input vertices'
         # Step3: Add start and end to dag
         dag.add_vertex(self.start)
-        dag.add_vertex(self.end)
+        dag.add_vertex(self._end)
         # Step4: Connect end to all output_ids
         for id in self.input_ids:
             dag.add_edge(self.start, id)
         # Step5: connect execute to ouput_id
         for id in self.output_ids:
-            dag.add_edge(id, self.end)
+            dag.add_edge(id, self._end)
 
     @property
-    def internal_inputs(self) -> Dict[str, ETL]:
+    def internal_ids(self) -> Dict[str, ETL]:
         """
         Get internal inputs ids and its located ETL units
         """
@@ -248,51 +289,48 @@ class ETLGroup(ETL):
         for etl_unit in self.etl_units:
             for id in etl_unit.input_ids:
                 results[id] = etl_unit
-        for id in self.input_ids:
-            del results[id]
-        return results
-
-    @property
-    def internal_outputs(self) -> Dict[str, ETL]:
-        """
-        Get internal inputs ids and its located ETL units
-        """
-        results = dict()
-        for etl_unit in self.etl_units:
             for id in etl_unit.output_ids:
                 results[id] = etl_unit
+        for id in self.input_ids:
+            del results[id]
         for id in self.output_ids:
             del results[id]
         return results
 
     def drop_internal_objs(self):
-        for input_id, etl_unit in self.internal_inputs.items():
-            try:
-                etl_unit._drop_input(input_id)
-            except BaseException:
-                print(f'input_id: {input_id} drop skipped')
+        for id, etl_unit in self.internal_ids.items():
+            if isinstance(etl_unit, ETLGroup):
+                etl_unit.drop_internal_objs()
+            else:
+                etl_unit.drop(id)
 
+    def _end(self):
+        self.end()
+        self.drop_internal_objs()
 
 class SQLExecutor(ETL):
     """Basic interface for SQL executor
     """
 
     def __init__(
-            self, rdb: RDB, input_fs: Optional[FileSystem] = None, output_fs: Optional[FileSystem] = None):
+            self, rdb: RDB, input_fs: Optional[FileSystem] = None, output_fs: Optional[FileSystem] = None, make_cache: bool=False):
         assert isinstance(rdb, RDB), 'rdb is not RDB type'
         self._rdb = rdb
         if input_fs is not None:
             assert isinstance(
                 input_fs, FileSystem), 'input_storage of SQLExecutor should be FileSystem'
-            self._input_storage = PyArrowStorage(input_fs)
+            input_storage = PyArrowStorage(input_fs)
         else:
-            self._input_storage = None
+            input_storage = None
         if output_fs is not None:
             assert isinstance(
                 output_fs, FileSystem), 'output_storage of SQLExecutor should be FileSystem'
-            self._output_storage = PyArrowStorage(output_fs)
+            output_storage = PyArrowStorage(output_fs)
         else:
-            self._output_storage = None
+            output_storage = None
+
+        if make_cache:
+            assert input_storage is not None and output_storage is not None, 'In SQLExecutor, cache mechanism only support when input/output file system (input/output_fs) provided.'
 
         assert all(['.' not in id for id in self.input_ids]
                    ), f'using . in SQLExecutor input id is not allowed. See: {self.input_ids}'
@@ -303,29 +341,8 @@ class SQLExecutor(ETL):
             ), f'output_id {id} does not have corresponding sql'
         for key in self.sqls():
             assert key in self.output_ids, f'sql of field {key} does not have corresponding output_id'
-        super().__init__()
+        super().__init__(input_storage, output_storage, make_cache=make_cache)
 
-    def drop_inputs(self):
-        for id in self.input_ids:
-            self._drop_input(id)
-
-    def drop_outputs(self):
-        for id in self.output_ids:
-            self._drop_input(id)
-
-    def _drop_input(self, obj_id: str):
-        assert obj_id in self.input_ids, 'For drop_input on obj_id, it should be in input_ids'
-        if self._input_storage is not None:
-            self._input_storage.drop(obj_id)
-        else:
-            self._rdb.drop(id)
-
-    def _drop_output(self, obj_id: str):
-        assert obj_id in self.output_ids, 'For drop_output on obj_id, it should be in output_ids'
-        if self._output_storage is not None:
-            self._output_storage.drop(obj_id)
-        else:
-            self._rdb.drop(id)
 
     @abc.abstractmethod
     def sqls(self, **kwargs) -> Dict[str, str]:
@@ -381,21 +398,19 @@ class ObjProcessor(ETL):
     """
 
     def __init__(self, input_storage: Storage,
-                 output_storage: Optional[Storage] = None, feedback_ids: List[str] = []):
-        self._input_storage = input_storage
+                 output_storage: Optional[Storage] = None, make_cache: bool=False):
+        input_storage = input_storage
         if output_storage is None:
-            self._output_storage = input_storage
-        else:
-            self._output_storage = output_storage
+            output_storage = input_storage
         assert isinstance(
-            self._input_storage, Storage), f'input_storage should be Storage rather than: {type(self._input_storage)}'
+            input_storage, Storage), f'input_storage should be Storage rather than: {type(self._input_storage)}'
         assert isinstance(
-            self._output_storage, Storage), f'output_storage should be Storage rather than: {type(self._output_storage)}'
-        assert self.get_input_type() == self._input_storage.get_download_type(
-        ), f'storage download type: {self._input_storage.get_download_type()} != transform input type: {self.get_input_type()}'
-        assert self.get_output_type() == self._output_storage.get_upload_type(
-        ), f'storage upload type: {self._output_storage.get_upload_type()} != transform output type: {self.get_output_type()}'
-        super().__init__()
+            output_storage, Storage), f'output_storage should be Storage rather than: {type(self._output_storage)}'
+        assert self.get_input_type() == input_storage.get_download_type(
+        ), f'storage download type: {input_storage.get_download_type()} != transform input type: {self.get_input_type()}'
+        assert self.get_output_type() == output_storage.get_upload_type(
+        ), f'storage upload type: {output_storage.get_upload_type()} != transform output type: {self.get_output_type()}'
+        super().__init__(input_storage, output_storage, make_cache=make_cache)
 
     @abc.abstractmethod
     def transform(self, inputs: List[object], **kwargs) -> List[object]:
@@ -458,19 +473,3 @@ class ObjProcessor(ETL):
             print(f'@{self} Start Loading Output: {id}')
             self._output_storage.upload(table, id)
             print(f'@{self} End Loading Output: {id}')
-
-    def drop_inputs(self):
-        for id in self.input_ids:
-            self._input_storage.drop(id)
-
-    def drop_outputs(self):
-        for id in self.output_ids:
-            self._output_storage.drop(id)
-
-    def _drop_input(self, obj_id: str):
-        assert obj_id in self.input_ids, 'For drop_input on obj_id, it should be in input_ids'
-        self._input_storage.drop(obj_id)
-
-    def _drop_output(self, obj_id: str):
-        assert obj_id in self.output_ids, 'For drop_output on obj_id, it should be in output_ids'
-        self._output_storage.drop(obj_id)

@@ -100,9 +100,6 @@ class MapReduce(ETLGroup):
     def output_ids(self):
         return self._map.output_ids
 
-    def end(self, **kwargs):
-        self.drop_internal_objs()
-
 
 class AddPartitionKey(SQLExecutor):
     """Adding Automic Partition Key before Dividing Input Tables"""

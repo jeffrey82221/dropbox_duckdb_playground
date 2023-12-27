@@ -6,8 +6,7 @@ pypi_table_loader = SimplePyPiCanonicalize(
     output_fs=LocalBackend('./data/canon/output/'),
     partition_fs=LocalBackend('./data/canon/partition/'),
     download_worker_count=800,  # 800
-    upload_worker_count=800,
     do_update=True
 )
 if __name__ == '__main__':
-    pypi_table_loader.execute(max_active_run=40)
+    pypi_table_loader.execute(max_active_run=10)
