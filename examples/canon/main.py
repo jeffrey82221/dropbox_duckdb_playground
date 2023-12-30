@@ -53,7 +53,7 @@ class NewPackageExtractor(ObjProcessor):
             print('Size of cached pkg_name:', len(pkg_name_cache_df))
             new_pkg_names = self._get_new_package_names(
                 pkg_name_df, pkg_name_cache_df)
-            assert len(new_pkg_names) > 0, 'Should download new package'
+            assert len(new_pkg_names) > 0, 'Should have new package'
             print('number of new packages:', len(new_pkg_names))
             return [vx.from_pandas(pd.DataFrame(
                 new_pkg_names, columns=['name']))]
@@ -74,7 +74,8 @@ class SimplePyPiCanonicalize(ETLGroup):
                  tmp_fs: LocalBackend,
                  output_fs: LocalBackend,
                  partition_fs: LocalBackend,
-                 download_worker_count: int,
+                 download_worker_count: int=1,
+                 update_worker_count: int=16,
                  test_count: Optional[int] = None,
                  do_update: bool = True):
         self._tmp_fs = tmp_fs
@@ -87,11 +88,14 @@ class SimplePyPiCanonicalize(ETLGroup):
                 partition_fs
             )
         ]
-        units.extend([
-            LatestUpdator(
+        self.updator = LatestUpdator(
                 VaexStorage(tmp_fs),
                 VaexStorage(raw_df),
-                do_update=do_update)
+                do_update=do_update,
+                workers=update_worker_count
+            )
+        units.extend([
+            self.updator
         ])
         units.append(
             LatestTabularize(

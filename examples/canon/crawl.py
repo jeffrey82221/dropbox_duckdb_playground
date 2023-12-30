@@ -20,6 +20,7 @@ import vaex as vx
 import tqdm
 import time
 import json
+from concurrent.futures import ThreadPoolExecutor
 from batch_framework.etl import ObjProcessor
 
 RETRIES_COUNT = 3
@@ -99,7 +100,9 @@ class LatestUpdator(ObjProcessor):
     def __init__(self, *args, **kwargs):
         kwargs['make_cache'] = True
         self._do_update = kwargs['do_update']
+        self._workers = kwargs['workers']
         del kwargs['do_update']
+        del kwargs['workers']
         super().__init__(*args, **kwargs)
 
     @property
@@ -115,14 +118,18 @@ class LatestUpdator(ObjProcessor):
         if not self.exists_cache:
             return [inputs[0]]
         else:
-            # 1. load cached name and etag
-            latest_cache = self.load_cache(self.output_ids[0])[
-                'name', 'etag'].to_pandas_df()
             if self._do_update:
+                # 1. load cached name and etag
+                latest_cache = self.load_cache(self.output_ids[0])[
+                    'name', 'etag'].to_pandas_df()
                 # 2. update latest_cache based on name and etag pandas
                 # dataframe
-                updated_latest = self._get_updated_package_records(
-                    latest_cache)
+                latest_cache['partition'] = latest_cache.index.map(lambda x: str(x % self._workers))
+                with ThreadPoolExecutor(max_workers=self._workers) as executor:
+                    updated_latest_chunks = executor.map(
+                        self._get_updated_package_records, 
+                        [x[1] for x in latest_cache.groupby('partition')])
+                updated_latest = pd.concat(updated_latest_chunks)
                 print('Total Updated Count:', len(updated_latest))
                 # 3. Append updated_latest (pd), latest_new (vx), latest_cache
                 # (vx)
@@ -139,7 +146,6 @@ class LatestUpdator(ObjProcessor):
             else:
                 latest = vx.concat([
                     inputs[0],
-                    # select those not in updated_latest
                     self.load_cache(self.output_ids[0])
                 ])
                 return [latest]
@@ -152,25 +158,24 @@ class LatestUpdator(ObjProcessor):
                 - name: Name of package
                 - latest: Latest Json
                 - etag: etag
+                - partition: for labeling which chunk is used
         Returns:
             new_df (Schema same as latest_df but only holds name of updated records)
         """
-        results = []
         total = len(latest_df)
+        partition = latest_df.partition.unique().tolist()[0]
         name_etag_pipe = zip(latest_df.name.tolist(), latest_df.etag.tolist())
-        name_etag_pipe = tqdm.tqdm(
-            name_etag_pipe,
+        update_pipe = map(lambda x: self._update_with_etag(x[0], x[1]), name_etag_pipe)
+        update_pipe = tqdm.tqdm(
+            update_pipe,
             total=total,
-            desc='get_updated_package_records')
-        for _, (name, etag) in enumerate(name_etag_pipe):
-            result = self._update_with_etag(name, etag)
-            if not isinstance(result, str):
-                latest, etag = result
-                latest = process_latest(latest)
-                results.append((name, latest, etag))
+            desc=f'update_with_etag ({partition})')
+        update_pipe = filter(lambda x: isinstance(x, tuple) and len(x) == 3, update_pipe)
+        update_pipe = map(lambda x: (x[0], process_latest(x[1]), x[2]), update_pipe)
         new_df = pd.DataFrame.from_records(
-            results, columns=['name', 'latest', 'etag'])
+            update_pipe, columns=['name', 'latest', 'etag'])
         new_df['latest'] = new_df['latest'].map(lambda x: json.dumps(x))
+        print(f'# of update in chunk ({partition}): {len(new_df)}')
         return new_df
 
     def _update_with_etag(
@@ -195,7 +200,7 @@ class LatestUpdator(ObjProcessor):
                 break
             except requests.exceptions.ConnectionError:
                 time.sleep(5)
-                print(f'ConnectionError Happened, {i}th reties')
+                print(f'ConnectionError Happened, Sleep and Retry #{i+1}')
         if res.status_code == 404:
             return '404'
         assert res.status_code in [
@@ -203,6 +208,6 @@ class LatestUpdator(ObjProcessor):
         if res.status_code == 200:
             latest = res.json()
             etag = res.headers["ETag"]
-            return latest, etag
+            return name, latest, etag
         else:
             return '304'

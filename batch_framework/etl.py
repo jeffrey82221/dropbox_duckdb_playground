@@ -13,7 +13,7 @@ from threading import Semaphore
 from dill.source import getsource
 import traceback
 import abc
-from .storage import Storage, PyArrowStorage, VaexStorage
+from .storage import Storage, PyArrowStorage
 from .filesystem import FileSystem
 from .rdb import RDB
 

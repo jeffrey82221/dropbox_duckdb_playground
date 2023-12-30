@@ -10,8 +10,8 @@ Experiment with new ETL architecture: using Dropbox as storage, Duckdb + Python 
         - input_ids / output_ids: a list of object ids to be recognized by `Storage`
     - `Storage` for upload and download python object from remote storage. 
 3. [X] Build `ETLGroup` class takes etl as input and connect etl instance, input_ids, output_ids with `paradag`.
-4. [ ] Speed up Mapping Method
-5. Build `SchedulerAdaptor` class to generate YAML for Github Action
+4. [X] Speed up Mapping Method
+5. [ ] Build `SchedulerAdaptor` class to generate YAML for Github Action
 and Airflow dag-factory (can build dag from yaml)
     - ref: https://github.com/ajbosco/dag-factory
     
@@ -21,11 +21,11 @@ and Airflow dag-factory (can build dag from yaml)
 2) [X] Build Graph from PyPi
 3) [ ] Replace batch_framework.filesystem by ffspec package (It is a filesystem interface used by many framework. e.g., pandas, torch, xarray, dask). 
 4) [ ] Consider duckdb ffspec interfacing: https://duckdb.org/docs/archive/0.9.1/guides/python/filesystems
-5) [ ] Enable Cache Mechanism (using copy in filesystem) to store inputs and outputs of previous run for later use. (turn on only if set)
-6) [ ] Enable Automatic Temporary Data Cleaning 
-7) [ ] Change current feedback mechanism to common cache mechaism (check examples)
+5) [X] Enable Cache Mechanism (using copy in filesystem) to store inputs and outputs of previous run for later use. (turn on only if set)
+6) [X] Enable Automatic Temporary Data Cleaning 
+7) [X] Change current feedback mechanism to common cache mechaism (check examples)
 8) [ ] Study of dropboxdrivefs as filesystem. 
-9) Extend to various web sources. 
+9) [ ] Extend to various web sources. 
 
 # Related Fields:
 
