@@ -27,7 +27,7 @@ redisgraph-bulk-insert PYPI --enforce-schema --port 9001 --nodes node_package.cs
     --relations link_has_author.csv link_has_license.csv link_has_maintainer.csv \
         link_has_requirement.csv link_has_url.csv
 """
-from batch_framework.filesystem import LocalBackend
+from batch_framework.filesystem import LocalBackend, DropboxBackend
 from batch_framework.rdb import DuckDBBackend
 from graph import GraphDataPlatform
 from meta import metagraph, er_meta_license, er_meta_requirement
@@ -35,8 +35,8 @@ from meta import metagraph, er_meta_license, er_meta_requirement
 gdp = GraphDataPlatform(
     metagraph=metagraph,
     canon_fs=LocalBackend('./data/canon/output/'),
-    subgraph_fs=LocalBackend('./data/subgraph/output/'),
-    output_fs=LocalBackend('./data/graph/'),
+    subgraph_fs=DropboxBackend('/data/subgraph/'),
+    output_fs=DropboxBackend('/data/graph/'),
     redisgraph_fs=LocalBackend('./data/redisgraph/'),
     er_meta_list=[er_meta_license, er_meta_requirement],
     mapping_fs=LocalBackend('./data/mapping/'),
@@ -47,4 +47,4 @@ gdp = GraphDataPlatform(
 
 if __name__ == '__main__':
     # gdp._grouper.execute(max_active_run=1)
-    gdp.execute(max_active_run=8)
+    gdp.execute(max_active_run=32)

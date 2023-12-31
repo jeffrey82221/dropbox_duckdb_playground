@@ -163,9 +163,8 @@ class PandasStorage(DataFrameStorage):
 class PyArrowStorage(DataFrameStorage):
     """Storage of pyarrow Table
     """
-
     def upload(self, dataframe: pa.Table, obj_id: str):
-        if isinstance(self._backend, LocalBackend):
+        if isinstance(self._backend, FileSystem):
             buff = io.BytesIO()
             pq.write_table(dataframe, buff)
             self._backend.upload_core(buff, obj_id + '.parquet')
@@ -199,20 +198,20 @@ class VaexStorage(DataFrameStorage):
     """
 
     def upload(self, dataframe: vx.DataFrame, obj_id: str):
-        if isinstance(self._backend, LocalBackend):
+        if isinstance(self._backend, FileSystem):
             # Try using multithread + io.pipe to stream vaex
             # to target directory
             buff = io.BytesIO()
             dataframe.export_parquet(buff)
             self._backend.upload_core(buff, obj_id + '.parquet')
         else:
-            raise TypeError('backend should be LocalBackend')
+            raise TypeError('backend should be FileSystem')
 
     def download(self, obj_id: str) -> vx.DataFrame:
-        if isinstance(self._backend, LocalBackend):
+        if isinstance(self._backend, FileSystem):
             result = vx.open(
-                f'{self._backend._directory}{obj_id}' +
+                f'{self._backend._fs.path}/{obj_id}' +
                 '.parquet')
             return result
         else:
-            raise TypeError('backend should be LocalBackend')
+            raise TypeError('backend should be FileSystem')

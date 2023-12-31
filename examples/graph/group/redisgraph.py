@@ -45,7 +45,7 @@ class FormatNode(ObjProcessor):
         )
         df = df.rename(columns=rename_dict)
         print(df)
-        df.to_csv(self._output_fs._directory + 'node_' + self._node_name + '.csv',
+        df.to_csv(self._output_fs._fs.path + '/node_' + self._node_name + '.csv',
                   index=False, header=True, quoting=csv.QUOTE_NONNUMERIC, escapechar='\\')
         return []
 
@@ -89,6 +89,6 @@ class FormatLink(ObjProcessor):
         )
         df = df.rename(columns=rename_dict)
         print(df)
-        df.to_csv(self._output_fs._directory + 'link_' + self._link_name + '.csv',
+        df.to_csv(self._output_fs._fs.path + '/link_' + self._link_name + '.csv',
                   index=False, header=True, quoting=csv.QUOTE_NONNUMERIC, escapechar='\\')
         return []

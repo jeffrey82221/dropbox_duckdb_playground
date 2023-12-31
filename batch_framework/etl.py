@@ -93,9 +93,11 @@ class ETL:
         assert self._make_cache, 'cannot check cache existence when make_cache=False'
         for id in self.input_ids:
             if not self._input_storage.check_exists(id + '_cache'):
+                print(f'{id}_cache does not exists')
                 return False
         for id in self.output_ids:
             if not self._output_storage.check_exists(id + '_cache'):
+                print(f'{id}_cache does not exists')
                 return False
         return True
 

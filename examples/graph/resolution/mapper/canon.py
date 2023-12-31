@@ -178,7 +178,7 @@ class Pairer(Messy2Canon, MatcherBase):
                      for item in inputs[0].to_dict('records')])
         canonical = dict([Pairer.dict_to_input(item)
                          for item in inputs[1].to_dict('records')])
-        print('Finish Extracting Messy and Canon Feature...')
+        print(f'Finish Extracting Messy ({len(messy)}) and Canon ({len(canonical)}) Feature...')
         self._gazetteer.index(canonical)
         print('Finish Indexing...')
         match_generator = self._gazetteer.search(messy, n_matches=2,
