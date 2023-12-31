@@ -35,7 +35,7 @@ from meta import metagraph, er_meta_license, er_meta_requirement
 gdp = GraphDataPlatform(
     metagraph=metagraph,
     canon_fs=LocalBackend('./data/canon/output/'),
-    subgraph_fs=DropboxBackend('/data/subgraph/'),
+    subgraph_fs=LocalBackend('./data/subgraph/'),
     output_fs=DropboxBackend('/data/graph/'),
     redisgraph_fs=LocalBackend('./data/redisgraph/'),
     er_meta_list=[er_meta_license, er_meta_requirement],
@@ -46,5 +46,5 @@ gdp = GraphDataPlatform(
 
 
 if __name__ == '__main__':
-    # gdp._grouper.execute(max_active_run=1)
+    # gdp._grouper.execute(max_active_run=16)
     gdp.execute(max_active_run=32)
