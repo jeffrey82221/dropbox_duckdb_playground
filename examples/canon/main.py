@@ -74,8 +74,8 @@ class SimplePyPiCanonicalize(ETLGroup):
                  tmp_fs: LocalBackend,
                  output_fs: LocalBackend,
                  partition_fs: LocalBackend,
-                 download_worker_count: int=1,
-                 update_worker_count: int=16,
+                 download_worker_count: int = 1,
+                 update_worker_count: int = 16,
                  test_count: Optional[int] = None,
                  do_update: bool = True):
         self._tmp_fs = tmp_fs
@@ -89,11 +89,11 @@ class SimplePyPiCanonicalize(ETLGroup):
             )
         ]
         self.updator = LatestUpdator(
-                VaexStorage(tmp_fs),
-                VaexStorage(raw_df),
-                do_update=do_update,
-                workers=update_worker_count
-            )
+            VaexStorage(tmp_fs),
+            VaexStorage(raw_df),
+            do_update=do_update,
+            workers=update_worker_count
+        )
         units.extend([
             self.updator
         ])

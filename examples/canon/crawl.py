@@ -124,10 +124,11 @@ class LatestUpdator(ObjProcessor):
                     'name', 'etag'].to_pandas_df()
                 # 2. update latest_cache based on name and etag pandas
                 # dataframe
-                latest_cache['partition'] = latest_cache.index.map(lambda x: str(x % self._workers))
+                latest_cache['partition'] = latest_cache.index.map(
+                    lambda x: str(x % self._workers))
                 with ThreadPoolExecutor(max_workers=self._workers) as executor:
                     updated_latest_chunks = executor.map(
-                        self._get_updated_package_records, 
+                        self._get_updated_package_records,
                         [x[1] for x in latest_cache.groupby('partition')])
                 updated_latest = pd.concat(updated_latest_chunks)
                 print('Total Updated Count:', len(updated_latest))
@@ -165,13 +166,25 @@ class LatestUpdator(ObjProcessor):
         total = len(latest_df)
         partition = latest_df.partition.unique().tolist()[0]
         name_etag_pipe = zip(latest_df.name.tolist(), latest_df.etag.tolist())
-        update_pipe = map(lambda x: self._update_with_etag(x[0], x[1]), name_etag_pipe)
+        update_pipe = map(
+            lambda x: self._update_with_etag(
+                x[0], x[1]), name_etag_pipe)
         update_pipe = tqdm.tqdm(
             update_pipe,
             total=total,
             desc=f'update_with_etag ({partition})')
-        update_pipe = filter(lambda x: isinstance(x, tuple) and len(x) == 3, update_pipe)
-        update_pipe = map(lambda x: (x[0], process_latest(x[1]), x[2]), update_pipe)
+        update_pipe = filter(
+            lambda x: isinstance(
+                x,
+                tuple) and len(x) == 3,
+            update_pipe)
+        update_pipe = map(
+            lambda x: (
+                x[0],
+                process_latest(
+                    x[1]),
+                x[2]),
+            update_pipe)
         new_df = pd.DataFrame.from_records(
             update_pipe, columns=['name', 'latest', 'etag'])
         new_df['latest'] = new_df['latest'].map(lambda x: json.dumps(x))

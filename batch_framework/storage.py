@@ -163,6 +163,7 @@ class PandasStorage(DataFrameStorage):
 class PyArrowStorage(DataFrameStorage):
     """Storage of pyarrow Table
     """
+
     def upload(self, dataframe: pa.Table, obj_id: str):
         if isinstance(self._backend, FileSystem):
             buff = io.BytesIO()

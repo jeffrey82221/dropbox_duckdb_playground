@@ -1,8 +1,8 @@
 """
 TODO:
 - [X] Add check exists on DropBox Backend
-- [X] For Dropbox Upload - Implement 
-    - [X] Splitting of Bytes 
+- [X] For Dropbox Upload - Implement
+    - [X] Splitting of Bytes
     - [X] Upload into Folder of Files
     - [X] Parallel Upload
 """
@@ -67,27 +67,30 @@ class FileSystem(Backend):
         except FileNotFoundError:
             pass
 
+
 class LocalBackend(FileSystem):
     def __init__(self, directory='./'):
         root_fs = LocalFileSystem()
         if not root_fs.exists(directory):
             root_fs.mkdir(directory)
-        super().__init__(DirFileSystem(directory))    
+        super().__init__(DirFileSystem(directory))
 
 
 limit_pool = Semaphore(value=8)
+
 
 class DropboxBackend(FileSystem):
     """
     Storage object with IO interface left abstract
     """
+
     def __init__(self, directory='/', chunksize=2000000):
         root_fs = DropboxDriveFileSystem(token=os.environ['DROPBOX_TOKEN'])
         if not root_fs.exists(directory):
             root_fs.mkdir(directory)
         super().__init__(DirFileSystem(directory, root_fs))
         self._chunksize = chunksize
-    
+
     def upload_core(self, file_obj: io.BytesIO, remote_path: str):
         """Upload file object to local storage
 
@@ -101,6 +104,7 @@ class DropboxBackend(FileSystem):
         if not self._fs.exists(f'{file_name}'):
             self._fs.mkdir(f'/{file_name}')
         dfs = DirFileSystem(f'/{file_name}', self._fs)
+
         def partial_upload(item):
             limit_pool.acquire()
             try:
@@ -115,20 +119,22 @@ class DropboxBackend(FileSystem):
             buff = file_obj.getbuffer()
             with ThreadPoolExecutor(max_workers=8) as executor:
                 input_pipe = self.__split_bytes(buff)
-                output_pipe = executor.map(partial_upload, enumerate(input_pipe))
-                _ = list(tqdm.tqdm(output_pipe, 
-                                   total=len(buff)//self._chunksize))
+                output_pipe = executor.map(
+                    partial_upload, enumerate(input_pipe))
+                _ = list(tqdm.tqdm(output_pipe,
+                                   total=len(buff) // self._chunksize))
             # Checking Data Size Correctness
             local_size = len(buff)
-            remote_file_info = dict([(_fn['name'].split('/')[-1], _fn['size']) for _fn in self._fs.ls(f'{file_name}') if _fn['type'] == 'file'])
+            remote_file_info = dict([(_fn['name'].split('/')[-1], _fn['size'])
+                                    for _fn in self._fs.ls(f'{file_name}') if _fn['type'] == 'file'])
             remote_size = sum(remote_file_info.values())
             assert local_size == remote_size, f'local size ({local_size}) != remote size ({remote_size})'
         except BaseException as e:
             raise ValueError(f'{remote_path} upload failed') from e
-        
+
     def __split_bytes(self, buff: bytes):
-        for i in range(len(buff)//self._chunksize + 1):
-            yield buff[i * self._chunksize: (i+1) * self._chunksize]
+        for i in range(len(buff) // self._chunksize + 1):
+            yield buff[i * self._chunksize: (i + 1) * self._chunksize]
 
     def download_core(self, remote_path: str) -> io.BytesIO:
         """Download file from remote storage
@@ -142,9 +148,12 @@ class DropboxBackend(FileSystem):
         assert '.' in remote_path, f'requires file ext .xxx provided in `remote_path` but it is {remote_path}'
         file_name = remote_path.split('.')[0]
         ext = remote_path.split('.')[1]
-        assert self._fs.exists(f'{file_name}'), f'{file_name} folder does not exists for FileSystem: {self._fs}'
-        remote_file_info = dict([(_fn['name'].split('/')[-1], _fn['size']) for _fn in self._fs.ls(f'{file_name}') if _fn['type'] == 'file'])
+        assert self._fs.exists(
+            f'{file_name}'), f'{file_name} folder does not exists for FileSystem: {self._fs}'
+        remote_file_info = dict([(_fn['name'].split('/')[-1], _fn['size'])
+                                for _fn in self._fs.ls(f'{file_name}') if _fn['type'] == 'file'])
         dfs = DirFileSystem(file_name, self._fs)
+
         def partial_download(index):
             limit_pool.acquire()
             try:
@@ -152,15 +161,19 @@ class DropboxBackend(FileSystem):
                 assert dfs.exists(fn), f'{fn} does not exists in {self._fs}'
                 with dfs.open(fn, 'rb') as f:
                     _result = f.read()
-                assert len(_result) == remote_file_info[fn], f'download size does not match with remote size. download size:{len(_result)}; remote size: {remote_file_info[fn]}; remote'
+                assert len(
+                    _result) == remote_file_info[fn], f'download size does not match with remote size. download size:{len(_result)}; remote size: {remote_file_info[fn]}; remote'
                 return _result
             finally:
                 limit_pool.release()
 
         try:
             with ThreadPoolExecutor(max_workers=8) as executor:
-                output_pipe = executor.map(partial_download, range(len(remote_file_info)))
-                output_pipe = tqdm.tqdm(output_pipe, total=len(remote_file_info))
+                output_pipe = executor.map(
+                    partial_download, range(
+                        len(remote_file_info)))
+                output_pipe = tqdm.tqdm(
+                    output_pipe, total=len(remote_file_info))
                 results = list(output_pipe)
             buff = b''.join(results)
             result = io.BytesIO(buff)
@@ -171,7 +184,7 @@ class DropboxBackend(FileSystem):
             return result
         except BaseException as e:
             raise ValueError(f'{remote_path} download failed') from e
-        
+
     def check_exists(self, remote_path: str) -> bool:
         assert '.' in remote_path, f'requires file ext .xxx provided in `remote_path` but it is {remote_path}'
         file_name = remote_path.split('.')[0]
