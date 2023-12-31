@@ -85,9 +85,8 @@ class DropboxBackend(FileSystem):
     """
 
     def __init__(self, directory='/', chunksize=2000000):
+        assert directory.startswith('/')
         root_fs = DropboxDriveFileSystem(token=os.environ['DROPBOX_TOKEN'])
-        if not root_fs.exists(directory):
-            root_fs.mkdir(directory)
         super().__init__(DirFileSystem(directory, root_fs))
         self._chunksize = chunksize
 
@@ -101,8 +100,12 @@ class DropboxBackend(FileSystem):
         assert '.' in remote_path, f'requires file ext .xxx provided in `remote_path` but it is {remote_path}'
         file_name = remote_path.split('.')[0]
         ext = remote_path.split('.')[1]
-        if not self._fs.exists(f'{file_name}'):
-            self._fs.mkdir(f'/{file_name}')
+
+        if self._fs.exists(f'{file_name}'):
+            self._fs.rm(f'{file_name}')
+            self._fs.mkdir(f'{file_name}')
+        else:
+            self._fs.mkdir(f'{file_name}')
         dfs = DirFileSystem(f'/{file_name}', self._fs)
 
         def partial_upload(item):

@@ -8,7 +8,7 @@ from typing import Dict, List, Union
 import json
 from .backend import Backend
 from .filesystem import FileSystem
-from .filesystem import LocalBackend
+from .filesystem import LocalBackend, DropboxBackend
 from .rdb import RDB
 
 
@@ -209,9 +209,24 @@ class VaexStorage(DataFrameStorage):
             raise TypeError('backend should be FileSystem')
 
     def download(self, obj_id: str) -> vx.DataFrame:
-        if isinstance(self._backend, FileSystem):
+        if isinstance(self._backend, LocalBackend):
+            path = self._backend._fs.path
+            # if path.startswith('/'):
+            #     path = path[1:]
             result = vx.open(
-                f'{self._backend._fs.path}/{obj_id}' +
+                f'{path}/{obj_id}' +
+                '.parquet')
+            return result
+        elif isinstance(self._backend, DropboxBackend):
+            buff = self._backend.download_core(obj_id + '.parquet')
+            buff.seek(0)
+            path = self._backend._fs.path
+            if path.startswith('/'):
+                path = path[1:]
+            lfs = LocalBackend(path)
+            lfs.upload_core(buff, remote_path=obj_id + '.parquet')
+            result = vx.open(
+                f'{path}/{obj_id}' +
                 '.parquet')
             return result
         else:
