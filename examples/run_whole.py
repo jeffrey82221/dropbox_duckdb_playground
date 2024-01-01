@@ -46,5 +46,6 @@ class GraphConstructor(ETLGroup):
 
 
 if __name__ == '__main__':
-    gc = GraphConstructor(test_count=2048 * 2)
-    gc.execute(max_active_run=16)
+    for i in [4, 8, 16, 32, 64, 128, 256]:
+        gc = GraphConstructor(test_count=2048 * i)
+        gc.execute(max_active_run=16)
