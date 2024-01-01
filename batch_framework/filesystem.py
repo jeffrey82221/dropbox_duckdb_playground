@@ -161,7 +161,7 @@ class DropboxBackend(FileSystem):
             limit_pool.acquire()
             try:
                 fn = f'{index}.{ext}'
-                assert dfs.exists(fn), f'{fn} does not exists in {self._fs}'
+                assert dfs.exists(fn), f'{fn} does not exists in {dfs}'
                 with dfs.open(fn, 'rb') as f:
                     _result = f.read()
                 assert len(

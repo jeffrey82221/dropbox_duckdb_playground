@@ -22,6 +22,7 @@ import time
 import json
 from concurrent.futures import ThreadPoolExecutor
 from batch_framework.etl import ObjProcessor
+from batch_framework.filesystem import limit_pool
 
 RETRIES_COUNT = 3
 
@@ -45,7 +46,11 @@ class LatestDownloader(ObjProcessor):
     def transform(self, inputs: List[pd.DataFrame],
                   **kwargs) -> List[pd.DataFrame]:
         assert len(inputs[0]) > 0, 'input table should have size > 0'
-        new_df = self._get_new_package_records(inputs[0].name.tolist())
+        limit_pool.acquire()
+        try:
+            new_df = self._get_new_package_records(inputs[0].name.tolist())
+        finally:
+            limit_pool.release()
         assert 'name' in new_df.columns
         assert 'latest' in new_df.columns
         assert 'etag' in new_df.columns
@@ -163,33 +168,37 @@ class LatestUpdator(ObjProcessor):
         Returns:
             new_df (Schema same as latest_df but only holds name of updated records)
         """
-        total = len(latest_df)
-        partition = latest_df.partition.unique().tolist()[0]
-        name_etag_pipe = zip(latest_df.name.tolist(), latest_df.etag.tolist())
-        update_pipe = map(
-            lambda x: self._update_with_etag(
-                x[0], x[1]), name_etag_pipe)
-        update_pipe = tqdm.tqdm(
-            update_pipe,
-            total=total,
-            desc=f'update_with_etag ({partition})')
-        update_pipe = filter(
-            lambda x: isinstance(
-                x,
-                tuple) and len(x) == 3,
-            update_pipe)
-        update_pipe = map(
-            lambda x: (
-                x[0],
-                process_latest(
-                    x[1]),
-                x[2]),
-            update_pipe)
-        new_df = pd.DataFrame.from_records(
-            update_pipe, columns=['name', 'latest', 'etag'])
-        new_df['latest'] = new_df['latest'].map(lambda x: json.dumps(x))
-        print(f'# of update in chunk ({partition}): {len(new_df)}')
-        return new_df
+        limit_pool.acquire()
+        try:
+            total = len(latest_df)
+            partition = latest_df.partition.unique().tolist()[0]
+            name_etag_pipe = zip(latest_df.name.tolist(), latest_df.etag.tolist())
+            update_pipe = map(
+                lambda x: self._update_with_etag(
+                    x[0], x[1]), name_etag_pipe)
+            update_pipe = tqdm.tqdm(
+                update_pipe,
+                total=total,
+                desc=f'update_with_etag ({partition})')
+            update_pipe = filter(
+                lambda x: isinstance(
+                    x,
+                    tuple) and len(x) == 3,
+                update_pipe)
+            update_pipe = map(
+                lambda x: (
+                    x[0],
+                    process_latest(
+                        x[1]),
+                    x[2]),
+                update_pipe)
+            new_df = pd.DataFrame.from_records(
+                update_pipe, columns=['name', 'latest', 'etag'])
+            new_df['latest'] = new_df['latest'].map(lambda x: json.dumps(x))
+            print(f'# of update in chunk ({partition}): {len(new_df)}')
+            return new_df
+        finally:
+            limit_pool.acquire()
 
     def _update_with_etag(
             self, name: str, etag: str) -> Optional[Tuple[Dict, str]]:
