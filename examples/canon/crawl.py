@@ -191,7 +191,6 @@ class LatestUpdator(ObjProcessor):
         new_df['latest'] = new_df['latest'].map(lambda x: json.dumps(x))
         print(f'# of update in chunk ({partition}): {len(new_df)}')
         return new_df
-        
 
     def _update_with_etag(
             self, name: str, etag: str) -> Optional[Tuple[Dict, str]]:

@@ -7,8 +7,9 @@ from batch_framework.rdb import DuckDBBackend
 from graph import GraphDataPlatform
 from meta import metagraph, er_meta_license, er_meta_requirement
 
+
 class GraphConstructor(ETLGroup):
-    def __init__(self, test_count: Optional[int]=None):
+    def __init__(self, test_count: Optional[int] = None):
         self.pypi_table_loader = SimplePyPiCanonicalize(
             raw_df=DropboxBackend('/data/canon/raw/'),
             tmp_fs=DropboxBackend('/data/canon/tmp/'),
@@ -31,18 +32,17 @@ class GraphConstructor(ETLGroup):
             rdb=DuckDBBackend()
         )
         super().__init__(
-            self.pypi_table_loader, 
+            self.pypi_table_loader,
             self.table_to_graph_transformer
         )
 
     @property
     def input_ids(self):
         return self.pypi_table_loader.input_ids
-    
+
     @property
     def output_ids(self):
         return self.table_to_graph_transformer.output_ids
-    
 
 
 if __name__ == '__main__':
