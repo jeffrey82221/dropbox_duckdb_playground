@@ -27,7 +27,7 @@ class GraphConstructor(ETLGroup):
             redisgraph_fs=LocalBackend('./data/redisgraph/'),
             er_meta_list=[er_meta_license, er_meta_requirement],
             mapping_fs=DropboxBackend('/data/mapping/'),
-            model_fs=LocalBackend('./data/model/'),
+            model_fs=DropboxBackend('/data/model/'),
             rdb=DuckDBBackend()
         )
         super().__init__(
@@ -46,5 +46,5 @@ class GraphConstructor(ETLGroup):
 
 
 if __name__ == '__main__':
-    gc = GraphConstructor(test_count=2048 * 8)
+    gc = GraphConstructor(test_count=2048 * 2)
     gc.execute(max_active_run=16)
