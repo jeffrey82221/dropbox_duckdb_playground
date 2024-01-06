@@ -66,6 +66,12 @@ class Storage:
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def copy(self, src_obj_id: str, dest_obj_id: str):
+        """
+        Copy an object
+        """
+        raise NotImplementedError
 
 class JsonStorage(Storage):
     """
@@ -98,6 +104,11 @@ class JsonStorage(Storage):
     def drop(self, obj_id: str):
         return self._backend.drop_file(obj_id + '.json')
 
+    def copy(self, src_obj_id: str, dest_obj_id: str):
+        self._backend.copy_file(
+            src_obj_id + '.json',
+            dest_obj_id + '.json'
+        )
 
 class DataFrameStorage(Storage):
     """
@@ -123,6 +134,11 @@ class DataFrameStorage(Storage):
     def drop(self, obj_id: str):
         return self._backend.drop_file(obj_id + '.parquet')
 
+    def copy(self, src_obj_id: str, dest_obj_id: str):
+        self._backend.copy_file(
+            src_obj_id + '.parquet',
+            dest_obj_id + '.parquet'
+        )
 
 class PandasStorage(DataFrameStorage):
     """

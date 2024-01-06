@@ -103,16 +103,18 @@ class ETL:
 
     def _save_cache(self):
         assert self._make_cache, 'cannot save cache when make_cache=False'
-        for input_id in self.input_ids:
-            self._input_storage.upload(
-                self._input_storage.download(input_id),
-                input_id + '_cache')
-            print(input_id + '_cache', 'saved')
-        for output_id in self.output_ids:
-            self._output_storage.upload(
-                self._output_storage.download(output_id),
-                output_id + '_cache')
-            print(output_id + '_cache', 'saved')
+        for id in self.input_ids:
+            self._input_storage.copy(
+                id,
+                id + '_cache'
+            )
+            print(id + '_cache', 'copied')
+        for id in self.output_ids:
+            self._output_storage.copy(
+                id,
+                id + '_cache'
+            )
+            print(id + '_cache', 'copied')
 
     def load_cache(self, id: str):
         assert self._make_cache, 'cannot load cache when make_cache=False'

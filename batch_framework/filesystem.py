@@ -67,6 +67,11 @@ class FileSystem(Backend):
         except FileNotFoundError:
             pass
 
+    def copy_file(self, src_file: str, dest_file):
+        assert '.' in src_file, f'requires file ext .xxx provided in `src_file` but it is {src_file}'
+        assert '.' in dest_file, f'requires file ext .xxx provided in `dest_file` but it is {dest_file}'
+        self.drop_file(dest_file)
+        self._fs.cp(src_file, dest_file, recursive=True)
 
 class LocalBackend(FileSystem):
     def __init__(self, directory='./'):
@@ -200,3 +205,12 @@ class DropboxBackend(FileSystem):
             return self._fs.rm(file_name)
         except FileNotFoundError:
             pass
+        
+    def copy_file(self, src_file: str, dest_file):
+        assert '.' in src_file, f'requires file ext .xxx provided in `src_file` but it is {src_file}'
+        assert '.' in dest_file, f'requires file ext .xxx provided in `dest_file` but it is {dest_file}'
+        self.drop_file(dest_file)
+        src_file = src_file.split('.')[0]
+        dest_file = dest_file.split('.')[0]
+        self._fs.dbx.files_copy(src_file, dest_file)
+    

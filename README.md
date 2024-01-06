@@ -25,8 +25,9 @@ and Airflow dag-factory (can build dag from yaml)
 6) [X] Enable Automatic Temporary Data Cleaning 
 7) [X] Change current feedback mechanism to common cache mechaism (check examples)
 8) [X] Study of dropboxdrivefs as filesystem. 
-9) [ ] Allow ffspec like package to be passed externally. 
-10) [ ] Extend to various web sources. 
+9) [ ] Alter Cache mechanism by using copy of fsspec. 
+10) [ ] Allow ffspec like package to be passed externally. 
+11) [ ] Extend to various web sources. 
 
 # Related Fields:
 
