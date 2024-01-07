@@ -92,6 +92,10 @@ class MyDropboxFS(DropboxConfig, DropboxDriveFileSystem):
         self.session = requests.Session()
         self.session.auth = ("Authorization", self.token)
 
+    def copy(self, path1, path2, recursive=True, **kwargs):
+        if self.isdir(path1):
+            assert recursive, 'recursive should be turn on for directory copying'
+        self.dbx.files_copy(path1, path2)
 
 class FileSystem(Backend):
     """
@@ -167,9 +171,8 @@ class DropboxBackend(FileSystem):
 
     def __init__(self, directory='/', chunksize=2000000):
         assert directory.startswith('/')
-        self._root_fs = MyDropboxFS(token='')
-        self._directory = directory
-        super().__init__(DirFileSystem(directory, self._root_fs))
+        root_fs = MyDropboxFS(token='')
+        super().__init__(DirFileSystem(directory, root_fs))
         self._chunksize = chunksize
 
     def upload_core(self, file_obj: io.BytesIO, remote_path: str):
@@ -289,9 +292,4 @@ class DropboxBackend(FileSystem):
         self.drop_file(dest_file)
         src_file = src_file.split('.')[0]
         dest_file = dest_file.split('.')[0]
-        if self._directory.endswith('/'):
-            dir = self._directory[:-1]
-        self._root_fs.dbx.files_copy(
-            f'{dir}/{src_file}',
-            f'{dir}/{dest_file}',
-        )
+        self._fs.cp(src_file, dest_file, recursive=True)

@@ -15,7 +15,7 @@ class GraphConstructor(ETLGroup):
             raw_df=DropboxBackend('/data/canon/raw/'),
             tmp_fs=DropboxBackend('/data/canon/tmp/'),
             output_fs=DropboxBackend('/data/canon/output/'),
-            partition_fs=LocalBackend('./data/canon/partition/'),
+            partition_fs=DropboxBackend('/data/canon/partition/'),
             download_worker_count=16,
             update_worker_count=16,
             test_count=test_count,
