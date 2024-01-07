@@ -91,8 +91,9 @@ class DropboxBackend(FileSystem):
 
     def __init__(self, directory='/', chunksize=2000000):
         assert directory.startswith('/')
-        root_fs = DropboxDriveFileSystem(token=os.environ['DROPBOX_TOKEN'])
-        super().__init__(DirFileSystem(directory, root_fs))
+        self._root_fs = DropboxDriveFileSystem(token=os.environ['DROPBOX_TOKEN'])
+        self._directory = directory
+        super().__init__(DirFileSystem(directory, self._root_fs))
         self._chunksize = chunksize
 
     def upload_core(self, file_obj: io.BytesIO, remote_path: str):
@@ -212,5 +213,10 @@ class DropboxBackend(FileSystem):
         self.drop_file(dest_file)
         src_file = src_file.split('.')[0]
         dest_file = dest_file.split('.')[0]
-        self._fs.dbx.files_copy(src_file, dest_file)
+        if self._directory.endswith('/'):
+            dir = self._directory[:-1]
+        self._root_fs.dbx.files_copy(
+            f'{dir}/{src_file}',
+            f'{dir}/{dest_file}',
+        )
     

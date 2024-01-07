@@ -46,8 +46,8 @@ class GraphConstructor(ETLGroup):
 
 
 if __name__ == '__main__':
-    for i in [1, 2, 4, 8, 16, 32, 64, 96, 128, 166, 176, 192, 208, 224, 240, 256]:
+    for i in [257]:
         with open('index.log', 'w') as f:
             f.write('start:' + str(i))
         gc = GraphConstructor(test_count=2048 * i)
-        gc.execute(max_active_run=8)
+        gc.execute(max_active_run=16)
