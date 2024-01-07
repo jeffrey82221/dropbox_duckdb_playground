@@ -73,6 +73,7 @@ class Storage:
         """
         raise NotImplementedError
 
+
 class JsonStorage(Storage):
     """
     Storage of JSON Python Diction
@@ -110,6 +111,7 @@ class JsonStorage(Storage):
             dest_obj_id + '.json'
         )
 
+
 class DataFrameStorage(Storage):
     """
     Storage of DataFrame
@@ -139,6 +141,7 @@ class DataFrameStorage(Storage):
             src_obj_id + '.parquet',
             dest_obj_id + '.parquet'
         )
+
 
 class PandasStorage(DataFrameStorage):
     """

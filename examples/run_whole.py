@@ -8,6 +8,7 @@ from batch_framework.rdb import DuckDBBackend
 from graph import GraphDataPlatform
 from meta import metagraph, er_meta_license, er_meta_requirement
 
+
 class GraphConstructor(ETLGroup):
     def __init__(self, test_count: Optional[int] = None):
         self.pypi_table_loader = SimplePyPiCanonicalize(
@@ -26,7 +27,9 @@ class GraphConstructor(ETLGroup):
             subgraph_fs=DropboxBackend('/data/subgraph/'),
             output_fs=DropboxBackend('/data/graph/'),
             redisgraph_fs=LocalBackend('./data/redisgraph/'),
-            er_meta_list=[copy.deepcopy(er_meta_license), copy.deepcopy(er_meta_requirement)],
+            er_meta_list=[
+                copy.deepcopy(er_meta_license),
+                copy.deepcopy(er_meta_requirement)],
             mapping_fs=DropboxBackend('/data/mapping/'),
             model_fs=DropboxBackend('/data/model/'),
             rdb=DuckDBBackend()

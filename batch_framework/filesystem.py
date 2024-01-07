@@ -21,6 +21,7 @@ import base64
 from dropboxdrivefs import DropboxDriveFileSystem
 from .backend import Backend
 
+
 class DropboxConfig:
     """
     Get OAuth2 Token
@@ -53,7 +54,6 @@ class DropboxConfig:
         with open('DROPBOX_REFRESH_TOKEN.ini', 'w') as f:
             f.write(refresh_token)
         return refresh_token
-        
 
     def _get_refresh_token(self, access_code_generated):
         auth = base64.b64encode(f'{self.app_key}:{self.app_secret}'.encode())
@@ -63,20 +63,21 @@ class DropboxConfig:
         }
         data = f'code={access_code_generated}&grant_type=authorization_code'
         response = requests.post('https://api.dropboxapi.com/oauth2/token',
-                                data=data,
-                                auth=(self.app_key, self.app_secret),
-                                headers=headers)
+                                 data=data,
+                                 auth=(self.app_key, self.app_secret),
+                                 headers=headers)
         data = response.json()
         if 'refresh_token' in data:
             return data['refresh_token']
-    
+
     @property
     def app_key(self):
         return os.getenv('DROPBOX_APP_KEY')
-    
+
     @property
     def app_secret(self):
         return os.getenv('DROPBOX_APP_SECRET')
+
 
 class MyDropboxFS(DropboxConfig, DropboxDriveFileSystem):
     def connect(self):
@@ -90,6 +91,7 @@ class MyDropboxFS(DropboxConfig, DropboxDriveFileSystem):
         self.token = self.refresh_token
         self.session = requests.Session()
         self.session.auth = ("Authorization", self.token)
+
 
 class FileSystem(Backend):
     """
@@ -145,6 +147,7 @@ class FileSystem(Backend):
         assert '.' in dest_file, f'requires file ext .xxx provided in `dest_file` but it is {dest_file}'
         self.drop_file(dest_file)
         self._fs.cp(src_file, dest_file, recursive=True)
+
 
 class LocalBackend(FileSystem):
     def __init__(self, directory='./'):
@@ -279,7 +282,7 @@ class DropboxBackend(FileSystem):
             return self._fs.rm(file_name)
         except FileNotFoundError:
             pass
-        
+
     def copy_file(self, src_file: str, dest_file):
         assert '.' in src_file, f'requires file ext .xxx provided in `src_file` but it is {src_file}'
         assert '.' in dest_file, f'requires file ext .xxx provided in `dest_file` but it is {dest_file}'
@@ -292,4 +295,3 @@ class DropboxBackend(FileSystem):
             f'{dir}/{src_file}',
             f'{dir}/{dest_file}',
         )
-    
