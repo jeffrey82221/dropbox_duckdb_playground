@@ -11,14 +11,14 @@ from meta import metagraph, er_meta_license, er_meta_requirement
 class GraphConstructor(ETLGroup):
     def __init__(self, test_count: Optional[int] = None):
         self.pypi_table_loader = SimplePyPiCanonicalize(
-            raw_df=LocalBackend('./data/canon/raw/'),
-            tmp_fs=LocalBackend('./data/canon/tmp/'),
+            raw_df=DropboxBackend('/data/canon/raw/'),
+            tmp_fs=DropboxBackend('/data/canon/tmp/'),
             output_fs=DropboxBackend('/data/canon/output/'),
             partition_fs=LocalBackend('./data/canon/partition/'),
             download_worker_count=16,
             update_worker_count=16,
             test_count=test_count,
-            do_update=False
+            do_update=True
         )
         self.table_to_graph_transformer = GraphDataPlatform(
             metagraph=copy.deepcopy(metagraph),
@@ -46,8 +46,8 @@ class GraphConstructor(ETLGroup):
 
 
 if __name__ == '__main__':
-    for i in [257]:
-        with open('index.log', 'w') as f:
-            f.write('start:' + str(i))
-        gc = GraphConstructor(test_count=2048 * i)
-        gc.execute(max_active_run=16)
+    # for i in [257]:
+    #     with open('index.log', 'w') as f:
+    #         f.write('start:' + str(i))
+    gc = GraphConstructor()
+    gc.execute(max_active_run=16)
